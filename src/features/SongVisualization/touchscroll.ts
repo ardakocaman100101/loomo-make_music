@@ -75,13 +75,17 @@ export function handleMove(player: Player, e: PointerEvent) {
   if (!isDragging_) {
     return
   }
-  const xVel = getPointerVelocity().x
-  seekSeconds(player, -xVel / pps)
+  const vel = getPointerVelocity()
+  // Use vertical y-velocity for vertical waterfall playhead dragging:
+  // Pulling UPWARDS (negative yVel) advances song time forward (t=0 becomes t=1s).
+  // Pulling DOWNWARDS (positive yVel) rewinds song time backward (adding extra lead-in time).
+  const yVel = vel.y
+  seekSeconds(player, -yVel / (pps * 0.8))
 
-  //  Threshold to prevent accidental flings
-  const threshold = 5
-  if (Math.abs(xVel) > threshold) {
-    acceleration = xVel
+  // Threshold to prevent accidental flings
+  const threshold = 3
+  if (Math.abs(yVel) > threshold) {
+    acceleration = -yVel
   } else {
     acceleration = 0
   }

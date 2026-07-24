@@ -52,7 +52,7 @@ export default function TopBar({
   statsVisible,
 }: TopBarProps) {
   return (
-    <div className="fixed top-0 left-0 w-full h-[78px] z-40 bg-[#131313]/20 backdrop-blur-3xl border-b border-white/5 flex items-center select-none shadow-[0_8px_32px_rgba(0,0,0,0.37)] px-6">
+    <div className="fixed top-0 left-0 w-full h-[78px] z-[100] bg-[#131313]/20 backdrop-blur-3xl border-b border-white/5 flex items-center select-none shadow-[0_8px_32px_rgba(0,0,0,0.37)] px-6">
       {/* Left side: Back button */}
       <div className="flex items-center">
         <ButtonWithTooltip tooltip="Back" onClick={onClickBack}>
@@ -74,7 +74,11 @@ export default function TopBar({
           <Midi size={32} />
         </ButtonWithTooltip>
 
-        {!isMobile() && <VolumeSliderButton />}
+        {!isMobile() && (
+          <div className="relative z-[100]">
+            <VolumeSliderButton />
+          </div>
+        )}
 
         <ButtonWithTooltip tooltip={statsVisible ? 'Hide Stats' : 'Show Stats'} onClick={onClickStats}>
           <BarChart2

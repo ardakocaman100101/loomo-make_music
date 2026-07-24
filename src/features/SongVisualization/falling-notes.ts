@@ -590,6 +590,10 @@ export function renderFallingNote(note: SongNote, state: State, isActiveTarget: 
 
   const localPoints: { x: number; y: number }[] = []
 
+  // Segment long sides into smaller intervals so 3D perspective curves non-linearly without bowing
+  const topCornerY = drawnTopY + r
+  const sideSegments = Math.max(1, Math.ceil(Math.abs(circleCenterY - topCornerY) / 25))
+
   // 1. Bottom half-circle (going from right angle 0 to left angle PI)
   const numCirclePoints = 16
   for (let j = 0; j <= numCirclePoints; j++) {
@@ -599,12 +603,20 @@ export function renderFallingNote(note: SongNote, state: State, isActiveTarget: 
     localPoints.push({ x, y })
   }
 
+  // 1b. Left vertical side (going UP from circleCenterY to topCornerY)
+  for (let s = 1; s < sideSegments; s++) {
+    const t = s / sideSegments
+    const x = circleCenterX - circleRadius
+    const y = circleCenterY + t * (topCornerY - circleCenterY)
+    localPoints.push({ x, y })
+  }
+
   // 2. Left-top rounded corner (from angle PI to 1.5 * PI)
   const numCornerPoints = 6
   for (let j = 0; j <= numCornerPoints; j++) {
     const angle = Math.PI + (j / numCornerPoints) * (Math.PI / 2)
     const x = (circleCenterX - circleRadius + r) + r * Math.cos(angle)
-    const y = (drawnTopY + r) + r * Math.sin(angle)
+    const y = topCornerY + r * Math.sin(angle)
     localPoints.push({ x, y })
   }
 
@@ -612,7 +624,15 @@ export function renderFallingNote(note: SongNote, state: State, isActiveTarget: 
   for (let j = 0; j <= numCornerPoints; j++) {
     const angle = 1.5 * Math.PI + (j / numCornerPoints) * (Math.PI / 2)
     const x = (circleCenterX + circleRadius - r) + r * Math.cos(angle)
-    const y = (drawnTopY + r) + r * Math.sin(angle)
+    const y = topCornerY + r * Math.sin(angle)
+    localPoints.push({ x, y })
+  }
+
+  // 3b. Right vertical side (going DOWN from topCornerY to circleCenterY)
+  for (let s = 1; s < sideSegments; s++) {
+    const t = s / sideSegments
+    const x = circleCenterX + circleRadius
+    const y = topCornerY + t * (circleCenterY - topCornerY)
     localPoints.push({ x, y })
   }
 

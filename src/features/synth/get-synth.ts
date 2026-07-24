@@ -2,6 +2,7 @@ import { isBrowser } from '@/utils'
 import gmInstruments from './instruments'
 import { loadInstrument } from './loadInstrument'
 import { ToneSamplerSynth } from './tone-synth'
+import { Tone909DrumMachineSynth } from './drum-machine-909'
 import { InstrumentName, Synth } from './types'
 
 function isValidInstrument(instrument: InstrumentName | undefined) {
@@ -26,6 +27,10 @@ export async function getSynth(instrument: InstrumentName | number): Promise<Syn
   if (!isValidInstrument(instrument)) {
     console.log('Invalid instrument: ', instrument, 'reverting to acoustic_grand_piano.')
     instrument = gmInstruments[0]
+  }
+
+  if (instrument === 'drum_machine_909') {
+    return new Tone909DrumMachineSynth('drum_machine_909')
   }
 
   const sampler = await loadInstrument(instrument)

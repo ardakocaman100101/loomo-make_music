@@ -88,6 +88,7 @@ const getInstrumentIcon = (inst: string) => {
 };
 
 const formatInstrumentLabel = (inst: string) => {
+  if (inst === 'drum_machine_909') return 'Roland TR-909 Drum Machine';
   return inst
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (l) => l.toUpperCase())
@@ -249,24 +250,76 @@ export default function Studio() {
   const [selectedNoteIndex, setSelectedNoteIndex] = useState<number | null>(null);
   const [hoveredNoteIndex, setHoveredNoteIndex] = useState<number | null>(null);
   const [clipboardNote, setClipboardNote] = useState<SongNote | null>(null);
+  // Playback states
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playbackTime, setPlaybackTime] = useState(0);
+  const [scrolledTime, setScrolledTime] = useState<number | null>(null);
+  const [mutedTracks, setMutedTracks] = useState<Set<number>>(new Set());
+  const [soloTracks, setSoloTracks] = useState<Set<number>>(new Set());
 
-  const [isSavedToLibrary, setIsSavedToLibrary] = useState(false);
+  const [isSavedToLibrary, setIsSavedToLibrary] = useState<boolean>(Boolean(id));
+  const savedSnapshotRef = useRef<string>("");
+  const playbackTimeRef = useRef<number>(0);
+  const playbackIntervalRef = useRef<number | null>(null);
+  const startTimeRef = useRef<number>(0);
+  const lastTimePlayedRef = useRef<number>(0);
+  const synthCacheRef = useRef<{ [trackId: number]: Synth }>({});
+  const activeNotesMapRef = useRef<Map<string, { note: SongNote; synth: Synth }>>(new Map());
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const pianoScrollRef = useRef<HTMLDivElement>(null);
+  const scrollInitializedRef = useRef(false);
+  const isDraggingPlayheadRef = useRef(false);
+  const justFinishedDragRef = useRef(false);
+  const hasManuallyMovedPlayheadRef = useRef(false);
 
   useEffect(() => {
-    async function checkSavedState() {
-      const list = await idb.get<any[]>("UPLOADED_SONGS");
-      if (list && id && list.some(s => s.id === id)) {
-        setIsSavedToLibrary(true);
+    if (id) {
+      setIsSavedToLibrary(true);
+    } else {
+      async function checkSavedState() {
+        const list = await idb.get<any[]>("UPLOADED_SONGS");
+        if (list && list.some(s => s.id === id)) {
+          setIsSavedToLibrary(true);
+        }
       }
+      checkSavedState();
     }
-    checkSavedState();
   }, [id]);
 
-  const handleSaveToLibrary = async () => {
-    const targetId = id || crypto.randomUUID();
+  const hasUnsavedChanges = useMemo(() => {
+    if (!savedSnapshotRef.current) return false;
+    const current = JSON.stringify({ notes, tracks, songName, bpm });
+    const isNotesOrTracksModified = current !== savedSnapshotRef.current;
+    const isPlayheadManuallyMoved = hasManuallyMovedPlayheadRef.current && Math.abs(playbackTime) > 0.05;
+    return isNotesOrTracksModified || isPlayheadManuallyMoved;
+  }, [notes, tracks, songName, bpm, playbackTime]);
+
+  const isFullySaved = isSavedToLibrary && !hasUnsavedChanges;
+
+  const processNotesAndSave = async (targetId: string) => {
+    // If user explicitly dragged playhead (positive or negative), shift notes so current playhead position becomes t=0s
+    let notesToProcess = notes;
+    const timeShift = playbackTimeRef.current || playbackTime;
+    if (hasManuallyMovedPlayheadRef.current && Math.abs(timeShift) > 0.05) {
+      notesToProcess = notes
+        .map((n) => ({
+          ...n,
+          time: n.time - timeShift,
+        }))
+        .filter((n) => n.time + n.duration > 0)
+        .map((n) => ({
+          ...n,
+          time: Math.max(0, n.time),
+          measure: Math.floor((Math.max(0, n.time) * (bpm / 60) * 4) / 16) + 1,
+        }));
+      setNotes(notesToProcess);
+      hasManuallyMovedPlayheadRef.current = false;
+      seekTo(0);
+    }
+
     const editedSong: Partial<Song> = {
       tracks,
-      notes,
+      notes: notesToProcess,
       bpms: [{ time: 0, bpm }],
       timeSignature: { numerator: 4, denominator: 4 },
       keySignature: "C",
@@ -274,38 +327,51 @@ export default function Studio() {
       secondsToTicks: (s) => Math.round(s * 480 * (bpm / 60)),
       ticksToSeconds: (t) => t / (480 * (bpm / 60)),
     };
-    try {
-      const midiBytes = songToMidiBytes(editedSong);
-      const parsedSong = parseMidi(midiBytes as any);
-      
-      const songToSave = {
-        ...parsedSong,
-        notes: notes,
-        secondsToTicks: undefined,
-        ticksToSeconds: undefined,
-      };
 
-      let songWithFingerings = songToSave;
-      const needsPrediction = notes.some((n) => typeof n.finger !== "number");
-      if (needsPrediction) {
-        try {
-          const predicted = await predictSongFingerings(ensureSongFunctions(songToSave as any));
-          songWithFingerings = {
-            ...predicted,
-            secondsToTicks: undefined,
-            ticksToSeconds: undefined,
-          };
-          // Sync UI notes state with newly predicted fingerings
-          setNotes(predicted.notes);
-        } catch (err) {
-          console.error("Failed predicting fingerings during save to library:", err);
-        }
+    const midiBytes = songToMidiBytes(editedSong);
+    const parsedSong = parseMidi(midiBytes as any);
+    
+    const songToSave = {
+      ...parsedSong,
+      notes: notesToProcess,
+      secondsToTicks: undefined,
+      ticksToSeconds: undefined,
+    };
+
+    let songWithFingerings = songToSave;
+    const needsPrediction = notesToProcess.some((n) => typeof n.finger !== "number");
+    if (needsPrediction) {
+      try {
+        const predicted = await predictSongFingerings(ensureSongFunctions(songToSave as any));
+        songWithFingerings = {
+          ...predicted,
+          secondsToTicks: undefined,
+          ticksToSeconds: undefined,
+        };
+        setNotes(predicted.notes);
+      } catch (err) {
+        console.error("Failed predicting fingerings during save to library:", err);
       }
-      await idb.set(`SONG_DATA_${targetId}`, songWithFingerings);
-      
-      persistence.registerCustomSketch(targetId, songName, totalDuration);
-      setIsSavedToLibrary(true);
-      alert("Successfully saved to your Library!");
+    }
+    await idb.set(`SONG_DATA_${targetId}`, songWithFingerings);
+    persistence.registerCustomSketch(targetId, songName, totalDuration);
+    
+    const finalNotes = songWithFingerings.notes || notesToProcess;
+    savedSnapshotRef.current = JSON.stringify({
+      notes: finalNotes,
+      tracks,
+      songName,
+      bpm,
+    });
+    setIsSavedToLibrary(true);
+
+    return { midiBytes, songWithFingerings };
+  };
+
+  const handleSaveToLibrary = async () => {
+    const targetId = id || crypto.randomUUID();
+    try {
+      await processNotesAndSave(targetId);
     } catch (e) {
       console.error("Failed to save to library", e);
       alert("Failed to save to library. Please check console.");
@@ -537,29 +603,32 @@ export default function Studio() {
     }
   };
 
-  // Sync piano horizontal scroll with grid horizontal scroll
+  // Sync piano horizontal scroll & update scrolledTime for Media Player readout during vertical scroll
   const handleGridScroll = useCallback(() => {
     if (pianoScrollRef.current && scrollContainerRef.current) {
       pianoScrollRef.current.scrollLeft = scrollContainerRef.current.scrollLeft;
     }
-  }, []);
 
-  // Playback states
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [playbackTime, setPlaybackTime] = useState(0);
-  const [mutedTracks, setMutedTracks] = useState<Set<number>>(new Set());
-  const [soloTracks, setSoloTracks] = useState<Set<number>>(new Set());
+    if (scrollContainerRef.current && !isPlaying && !isDraggingPlayheadRef.current) {
+      const container = scrollContainerRef.current;
+      const containerH = container.clientHeight;
+      if (containerH > 0) {
+        const factor = (bpm / 60) * 4 * zoomY;
+        const maxNoteEnd = notes.length > 0 ? Math.max(...notes.map((n) => n.time + n.duration)) : 0;
+        const computedTotalDur = Math.max(DEFAULT_DURATION, Math.ceil(maxNoteEnd + 4));
+        const gridH = Math.ceil(computedTotalDur * factor);
+        const playheadY = containerH - PLAYHEAD_BOTTOM;
+        const currentGridY = container.scrollTop + playheadY;
+        const currentT = (gridH - currentGridY) / factor;
+        const cappedT = Math.max(0, Math.min(computedTotalDur, currentT));
+        setScrolledTime(cappedT);
+      }
+    }
+  }, [isPlaying, notes, bpm, zoomY, PLAYHEAD_BOTTOM, DEFAULT_DURATION]);
 
-  // Refs for loop playback
-  const playbackIntervalRef = useRef<number | null>(null);
-  const startTimeRef = useRef<number>(0);
-  const playbackTimeRef = useRef<number>(0);
-  const lastTimePlayedRef = useRef<number>(0);
-  const synthCacheRef = useRef<{ [trackId: number]: Synth }>({});
-  const activeNotesMapRef = useRef<Map<string, { note: SongNote; synth: Synth }>>(new Map());
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const pianoScrollRef = useRef<HTMLDivElement>(null);
-  const scrollInitializedRef = useRef(false);
+
+
+
 
   // Set scroll position: center active notes horizontally, and align vertical scroll with the playhead.
   useLayoutEffect(() => {
@@ -567,6 +636,8 @@ export default function Studio() {
     const el = scrollContainerRef.current;
     if (!el || el.clientHeight === 0) return;
     if (id && notes.length === 0) return;
+    if (scrollInitializedRef.current) return;
+    scrollInitializedRef.current = true;
 
     // 1. Horizontal: Center the active notes pitch range on load or zoom
     if (notes.length > 0) {
@@ -642,7 +713,8 @@ export default function Studio() {
     if (loadedSong) {
       // Reset scroll so it re-initializes with the real notes after this render
       scrollInitializedRef.current = false;
-      setSongName(songMeta?.title || "Untitled Song");
+      const initialName = songMeta?.title || "Untitled Song";
+      setSongName(initialName);
       let normalizedTracks = { ...(loadedSong.tracks || {
         0: { name: "Melody", instrument: "acoustic_grand_piano", program: 0 },
       }) };
@@ -657,12 +729,20 @@ export default function Studio() {
         );
       }
 
+      const initialBpm = loadedSong.bpms?.[0]?.bpm || 120;
       setNotes(normalizedNotes);
       setTracks(normalizedTracks);
       if (loadedSong.bpms && loadedSong.bpms.length > 0) {
-        setBpm(loadedSong.bpms[0].bpm);
+        setBpm(initialBpm);
       }
       
+      savedSnapshotRef.current = JSON.stringify({
+        notes: normalizedNotes,
+        tracks: normalizedTracks,
+        songName: initialName,
+        bpm: initialBpm,
+      });
+
       // Initialize history
       const initialHistory = [{ notes: JSON.parse(JSON.stringify(normalizedNotes)), tracks: { ...normalizedTracks } }];
       setHistory(initialHistory);
@@ -673,6 +753,12 @@ export default function Studio() {
       const initialTracks = {
         0: { name: "Piano Melody", instrument: "acoustic_grand_piano" as InstrumentName, program: 0 },
       };
+      savedSnapshotRef.current = JSON.stringify({
+        notes: initialNotes,
+        tracks: initialTracks,
+        songName: "Untitled Song",
+        bpm: 120,
+      });
       setHistory([{ notes: initialNotes, tracks: initialTracks }]);
       setHistoryIndex(0);
     }
@@ -790,7 +876,7 @@ export default function Studio() {
   }, [stopAllNotes]);
 
   const seekTo = useCallback((t: number) => {
-    const cappedT = Math.max(0, Math.min(totalDuration, t));
+    const cappedT = Math.max(-10, Math.min(totalDuration, t));
     setPlaybackTime(cappedT);
     playbackTimeRef.current = cappedT;
     lastTimePlayedRef.current = cappedT;
@@ -806,6 +892,34 @@ export default function Studio() {
       scrollContainerRef.current.scrollTop = Math.max(0, noteY - playheadY);
     }
   }, [isPlaying, bpm, zoomY, totalDuration, PLAYHEAD_BOTTOM]);
+
+  const handlePlayheadMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    isDraggingPlayheadRef.current = true;
+    hasManuallyMovedPlayheadRef.current = true;
+
+    const startMouseY = e.clientY;
+    const initialTime = playbackTimeRef.current;
+    const factor = (bpm / 60) * 4 * zoomY;
+
+    const handleMouseMove = (moveEv: MouseEvent) => {
+      if (!isDraggingPlayheadRef.current) return;
+      const deltaY = moveEv.clientY - startMouseY;
+      const deltaTime = -deltaY / factor;
+      const targetTime = initialTime + deltaTime;
+      seekTo(targetTime);
+    };
+
+    const handleMouseUp = () => {
+      isDraggingPlayheadRef.current = false;
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+  };
 
   useEffect(() => {
     return () => {
@@ -1022,12 +1136,17 @@ export default function Studio() {
     startY: number;
     startTime: number;
     startMidi: number;
-    isResize: boolean;
+    resizeMode: "top" | "bottom" | "move";
     startDuration: number;
   } | null>(null);
 
-  const handleNoteMouseDown = (e: React.MouseEvent, index: number, isResize: boolean) => {
+  const handleNoteMouseDown = (
+    e: React.MouseEvent,
+    index: number,
+    resizeMode: "top" | "bottom" | "move" = "move"
+  ) => {
     e.stopPropagation();
+    justFinishedDragRef.current = false;
     const note = notes[index];
     dragRef.current = {
       noteIndex: index,
@@ -1035,7 +1154,7 @@ export default function Studio() {
       startY: e.clientY,
       startTime: note.time,
       startMidi: note.midiNote,
-      isResize,
+      resizeMode,
       startDuration: note.duration,
     };
     setSelectedNoteIndex(index);
@@ -1046,24 +1165,38 @@ export default function Studio() {
 
   const handleNoteMouseMove = (e: MouseEvent) => {
     if (!dragRef.current) return;
-    const { noteIndex, startX, startY, startTime, startMidi, isResize, startDuration } = dragRef.current;
+    const { noteIndex, startX, startY, startTime, startMidi, resizeMode, startDuration } = dragRef.current;
     
     const deltaX = e.clientX - startX;
     const deltaY = e.clientY - startY;
 
-    // Inverted Y: dragging DOWN = moving toward earlier time (negative deltaTime)
+    if (Math.hypot(deltaX, deltaY) > 3) {
+      justFinishedDragRef.current = true;
+    }
+
+    // Grid coordinates: Dragging mouse UPWARDS (deltaY < 0) corresponds to moving toward future time (+deltaTime)
     const deltaSubdivisions = Math.round(deltaY / zoomY);
     const deltaTime = -deltaSubdivisions * (60 / bpm / 4);
 
+    const minSubdivision = 60 / bpm / 4;
     const updatedNotes = [...notes];
     const note = { ...updatedNotes[noteIndex] };
 
-    if (isResize) {
-      // Resize handle is at TOP of note (future end). Drag UP = longer, drag DOWN = shorter.
-      const newDuration = Math.max(60 / bpm / 4, startDuration - deltaTime);
+    if (resizeMode === "top") {
+      // Dragging TOP handle: Drag UP (deltaTime > 0) -> elongates duration. Drag DOWN (deltaTime < 0) -> shortens duration.
+      const newDuration = Math.max(minSubdivision, startDuration + deltaTime);
       note.duration = newDuration;
+    } else if (resizeMode === "bottom") {
+      // Dragging BOTTOM handle: Drag DOWN (deltaTime < 0) -> starts earlier, elongates duration. Drag UP (deltaTime > 0) -> starts later, shortens.
+      const fixedEndTime = startTime + startDuration;
+      const proposedStartTime = startTime + deltaTime;
+      const maxStartTime = fixedEndTime - minSubdivision;
+      const newStartTime = Math.max(0, Math.min(maxStartTime, proposedStartTime));
+      note.time = newStartTime;
+      note.duration = fixedEndTime - newStartTime;
+      note.measure = Math.floor((newStartTime * (bpm / 60) * 4) / 16) + 1;
     } else {
-      // Moving
+      // Moving entire note body
       const newTime = Math.max(0, startTime + deltaTime);
       const startLane = studioMeasurements.lanes[startMidi];
       const currentX = (startLane ? startLane.noteLeft : 0) + deltaX;
@@ -1107,6 +1240,11 @@ export default function Studio() {
     dragRef.current = null;
     window.removeEventListener("mousemove", handleNoteMouseMove);
     window.removeEventListener("mouseup", handleNoteMouseUp);
+
+    // Keep flag true for 250ms so any trailing click event on grid is ignored
+    setTimeout(() => {
+      justFinishedDragRef.current = false;
+    }, 250);
   };
 
   // Undo / Redo triggers
@@ -1220,26 +1358,9 @@ export default function Studio() {
     const targetId = id || crypto.randomUUID();
     const targetSource = source || "upload";
 
-    // Build the partial Song structure to encode
-    const editedSong: Partial<Song> = {
-      tracks,
-      notes,
-      bpms: [{ time: 0, bpm }],
-      timeSignature: { numerator: 4, denominator: 4 },
-      keySignature: "C",
-      ppq: 480,
-      secondsToTicks: (s) => Math.round(s * 480 * (bpm / 60)), // dummy mappings for the compiler
-      ticksToSeconds: (t) => t / (480 * (bpm / 60)),
-    };
-
     try {
-      const midiBytes = songToMidiBytes(editedSong);
+      const { midiBytes, songWithFingerings } = await processNotesAndSave(targetId);
       const base64Data = bytesToBase64(midiBytes);
-      
-      if (!id) {
-        // If sketching, register as uploaded song
-        persistence.registerCustomSketch(targetId, songName, totalDuration);
-      }
       
       // Store in caching layer
       persistence.saveEditedMidi(targetId, base64Data);
@@ -1247,33 +1368,7 @@ export default function Studio() {
       // Clear old settings so play mode correctly re-evaluates the new track structures
       persistence.clearPersistedSongSettings(targetId);
 
-      // Update SWR cache directly to avoid useSWRImmutable showing stale data
       const parsedSong = parseMidi(midiBytes as any);
-      
-      // Save the predicted and custom overrides directly to IndexedDB
-      const songToSave = {
-        ...parsedSong,
-        notes: notes,
-        secondsToTicks: undefined,
-        ticksToSeconds: undefined,
-      };
-
-      let songWithFingerings = songToSave;
-      const needsPrediction = notes.some((n) => typeof n.finger !== "number");
-      if (needsPrediction) {
-        try {
-          const predicted = await predictSongFingerings(ensureSongFunctions(songToSave as any));
-          songWithFingerings = {
-            ...predicted,
-            secondsToTicks: undefined,
-            ticksToSeconds: undefined,
-          };
-        } catch (err) {
-          console.error("Failed predicting fingerings during save and practice:", err);
-        }
-      }
-      await idb.set(`SONG_DATA_${targetId}`, songWithFingerings);
-      
       const songWithFunctions = ensureSongFunctions({
         ...parsedSong,
         notes: songWithFingerings.notes,
@@ -1481,7 +1576,10 @@ export default function Studio() {
           <div className="h-5 w-[1px] bg-white/15" />
 
           <div className="text-sm font-mono font-semibold tabular-nums text-white/90">
-            {playbackTime.toFixed(2)}s / {totalDuration}s
+            {(isPlaying || isDraggingPlayheadRef.current || hasManuallyMovedPlayheadRef.current
+              ? playbackTime
+              : (scrolledTime ?? playbackTime)
+            ).toFixed(2)}s / {totalDuration}s
           </div>
         </div>
 
@@ -1519,15 +1617,15 @@ export default function Studio() {
 
           <button
             onClick={handleSaveToLibrary}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2 transition-all text-sm font-semibold border cursor-pointer ${
-              isSavedToLibrary
-                ? "bg-emerald-600/20 border-emerald-500/30 text-emerald-400 cursor-default"
-                : "bg-white/5 border-white/15 hover:bg-white/10 text-white"
+            className={`flex items-center gap-2 rounded-xl px-4 py-2 transition-all text-sm border ${
+              isFullySaved
+                ? "bg-white/5 border-white/15 text-white/50 font-semibold cursor-default"
+                : "bg-emerald-600 border-emerald-400 hover:bg-emerald-500 text-white font-bold shadow-[0_0_15px_rgba(16,185,129,0.4)] hover:shadow-[0_0_20px_rgba(16,185,129,0.6)] active:scale-95 cursor-pointer"
             }`}
-            disabled={isSavedToLibrary}
+            disabled={isFullySaved}
           >
-            <Save className="h-4 w-4" />
-            <span>{isSavedToLibrary ? "Saved" : "Save to Library"}</span>
+            <Save className={`h-4 w-4 ${isFullySaved ? "text-white/40" : "text-white"}`} />
+            <span>{isFullySaved ? "Saved" : "Save"}</span>
           </button>
 
           <button
@@ -1583,10 +1681,10 @@ export default function Studio() {
                     <div
                       key={trackId}
                       onClick={() => setActiveTrack(trackId)}
-                      className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                      className={`p-3.5 rounded-2xl border transition-all cursor-pointer select-none ${
                         isActive
-                          ? "bg-[#222226] border-[#9ba4ff]/40 shadow-[0_0_20px_rgba(155,164,255,0.08)]"
-                          : "bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10"
+                          ? "bg-[#202025] border-[#9ba4ff] shadow-[0_0_20px_rgba(155,164,255,0.2)] ring-1 ring-[#9ba4ff]/60 opacity-100"
+                          : "bg-white/[0.03] border-white/5 opacity-55 hover:opacity-85 hover:bg-white/5 hover:border-white/15"
                       }`}
                     >
                       <div className="flex items-center justify-between mb-3">
@@ -1618,46 +1716,43 @@ export default function Studio() {
                         />
                       </div>
 
-                      {/* Mute/Solo/Practice controls */}
-                      <div className="flex items-center justify-between pt-1 border-t border-white/5">
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleMute(trackId);
-                            }}
-                            className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
-                              isMuted
-                                ? "bg-red-500/20 text-red-400 border-red-500/30"
-                                : "bg-white/5 text-white/50 border-white/10 hover:text-white"
-                            }`}
-                          >
-                            Mute
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleSolo(trackId);
-                            }}
-                            className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
-                              isSolo
-                                ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
-                                : "bg-white/5 text-white/50 border-white/10 hover:text-white"
-                            }`}
-                          >
-                            Solo
-                          </button>
-                        </div>
+                      {/* Mute/Solo/Play controls - Modernized 3-column equal grid layout with high-readability font sizing */}
+                      <div className="grid grid-cols-3 gap-1.5 pt-2.5 border-t border-white/10 w-full">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleMute(trackId);
+                          }}
+                          className={`w-full py-2 rounded-xl text-xs sm:text-[13px] font-extrabold tracking-wide border transition-all cursor-pointer flex items-center justify-center ${
+                            isMuted
+                              ? "bg-red-500/20 text-red-400 border-red-500/40 shadow-[0_0_12px_rgba(239,68,68,0.25)]"
+                              : "bg-white/10 text-white/80 border-white/15 hover:text-white hover:bg-white/20"
+                          }`}
+                        >
+                          Mute
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleSolo(trackId);
+                          }}
+                          className={`w-full py-2 rounded-xl text-xs sm:text-[13px] font-extrabold tracking-wide border transition-all cursor-pointer flex items-center justify-center ${
+                            isSolo
+                              ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/40 shadow-[0_0_12px_rgba(234,179,8,0.25)]"
+                              : "bg-white/10 text-white/80 border-white/15 hover:text-white hover:bg-white/20"
+                          }`}
+                        >
+                          Solo
+                        </button>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleSaveAndPractice(trackId);
                           }}
-                          title="Practice this Track"
-                          className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 text-xs font-semibold text-white/60 border border-white/10 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                          title="Play this Track"
+                          className="w-full py-2 rounded-xl bg-[#6c79f0] text-white border border-[#8591ff] hover:bg-[#8591ff] transition-all text-xs sm:text-[13px] font-extrabold tracking-wide flex items-center justify-center cursor-pointer shadow-[0_0_15px_rgba(108,121,240,0.35)] active:scale-95"
                         >
-                          <Target className="h-3.5 w-3.5 text-[#9ba4ff]" />
-                          <span>Practice</span>
+                          Play
                         </button>
                       </div>
                     </div>
@@ -1742,11 +1837,19 @@ export default function Studio() {
               overflow: 'hidden',
             }}
           >
-            {/* Playhead line */}
+            {/* Interactive Playhead line & time handle */}
             <div
-              className="pointer-events-none absolute left-0 right-0 h-[2px] bg-[#9ba4ff] shadow-[0_0_8px_#9ba4ff] z-50"
-              style={{ bottom: PLAYHEAD_BOTTOM }}
-            />
+              onMouseDown={handlePlayheadMouseDown}
+              onClick={(e) => e.stopPropagation()}
+              title="Click or drag to seek time"
+              className="absolute left-0 right-0 h-6 flex items-center z-[60] cursor-ns-resize group select-none pointer-events-auto"
+              style={{ bottom: PLAYHEAD_BOTTOM - 12 }}
+            >
+              <div className="w-full h-[3px] bg-[#9ba4ff] shadow-[0_0_12px_#9ba4ff] group-hover:bg-[#b8c0ff] group-hover:h-[4px] transition-all" />
+              <div className="absolute left-4 px-2.5 py-0.5 rounded-full bg-[#9ba4ff] text-[#131313] font-black text-[11px] tracking-wider shadow-xl group-hover:scale-110 transition-all border border-white/40 pointer-events-none">
+                {playbackTime.toFixed(2)}s
+              </div>
+            </div>
 
             {/* Scrollable note grid */}
             <div
@@ -1758,6 +1861,10 @@ export default function Studio() {
               {/* Grid canvas with alternating black/white key vertical lanes */}
               <div
                 onClick={(e) => {
+                  if (justFinishedDragRef.current) {
+                    e.stopPropagation();
+                    return;
+                  }
                   const rect = e.currentTarget.getBoundingClientRect();
                   const clickX = e.clientX - rect.left;
                   const clickY = e.clientY - rect.top;
@@ -1813,7 +1920,7 @@ export default function Studio() {
                   return (
                     <div
                       key={index}
-                      onMouseDown={(e) => handleNoteMouseDown(e, index, false)}
+                      onMouseDown={(e) => handleNoteMouseDown(e, index, "move")}
                       onClick={(e) => handleNoteClick(e, index)}
                       onDoubleClick={(e) => handleNoteDoubleClick(e, index)}
                       onMouseEnter={() => setHoveredNoteIndex(index)}
@@ -1859,10 +1966,23 @@ export default function Studio() {
                         </span>
                       )}
 
+                      {/* Top Duration Resize Handle */}
                       <div
-                        onMouseDown={(e) => handleNoteMouseDown(e, index, true)}
-                        className="absolute top-0 left-0 h-2.5 w-full cursor-ns-resize hover:bg-white/30 z-10"
-                      />
+                        onMouseDown={(e) => handleNoteMouseDown(e, index, "top")}
+                        title="Drag top edge to adjust duration"
+                        className="absolute top-0 left-0 h-3.5 w-full cursor-ns-resize hover:bg-white/30 z-20 flex items-center justify-center group/top"
+                      >
+                        <div className="w-5 h-[2px] bg-white/40 group-hover/top:bg-white rounded-full transition-all shadow-sm" />
+                      </div>
+
+                      {/* Bottom Duration Resize Handle */}
+                      <div
+                        onMouseDown={(e) => handleNoteMouseDown(e, index, "bottom")}
+                        title="Drag bottom edge to adjust duration"
+                        className="absolute bottom-0 left-0 h-3.5 w-full cursor-ns-resize hover:bg-white/30 z-20 flex items-center justify-center group/bot"
+                      >
+                        <div className="w-5 h-[2px] bg-white/40 group-hover/bot:bg-white rounded-full transition-all shadow-sm" />
+                      </div>
                     </div>
                   );
                 })}

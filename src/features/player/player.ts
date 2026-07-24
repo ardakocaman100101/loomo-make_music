@@ -306,10 +306,6 @@ export class Player {
 
   setVolume(vol: number) {
     this.store.set(this.volume, vol)
-    this.synths?.forEach((synth) => {
-      synth?.setMasterVolume(vol)
-    })
-
     const backingTrack = this.getSong()?.backing
     if (backingTrack) {
       backingTrack.volume = 0.15 * vol
@@ -448,7 +444,9 @@ export class Player {
   }
 
   playNote(note: SongNote) {
-    this.synths[note.track]?.playNote(note.midiNote, note.velocity)
+    const guideVol = this.store.get(this.volume)
+    const vel = (note.velocity ?? 80) * guideVol
+    this.synths[note.track]?.playNote(note.midiNote, vel)
   }
 
   playUserNote(midiNote: number, velocity = 127 / 2) {
@@ -462,7 +460,8 @@ export class Player {
         trackId = Number(activeEntry[0])
       }
     }
-    this.synths[trackId]?.playNote(midiNote, velocity)
+    const keysVol = this.store.get(this.instrumentVolume)
+    this.synths[trackId]?.playNote(midiNote, velocity * keysVol)
   }
 
   stopUserNote(midiNote: number) {

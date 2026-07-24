@@ -128,6 +128,7 @@ const gmInstruments = [
   'applause',
   'gunshot',
   'percussion',
+  'drum_machine_909',
 ] as const
 
 export type InstrumentName = (typeof gmInstruments)[number]

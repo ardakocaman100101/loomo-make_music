@@ -110,9 +110,6 @@ export function UploadMidi({
                 type="file"
                 accept=".mid,.midi,audio/midi,audio/x-midi"
                 multiple
-                // @ts-expect-error - webkitdirectory is not a standard React attribute but works in browsers
-                webkitdirectory=""
-                directory=""
                 ref={folderInputRef}
                 style={{ display: 'none' }}
                 onChange={handleFileChange}

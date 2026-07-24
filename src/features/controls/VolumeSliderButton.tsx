@@ -28,7 +28,7 @@ export function VolumeSliderButton() {
       }
       openOn="hover"
     >
-      <div className="relative z-20 flex h-48 w-32 flex-row justify-around bg-white p-3 rounded-lg shadow-lg border border-gray-200 select-none">
+      <div className="relative z-[100] flex h-48 w-32 flex-row justify-around bg-white p-3 rounded-lg shadow-2xl border border-gray-200 select-none">
         {/* Left slider: Guide volume */}
         <div className="flex flex-col items-center gap-1.5 h-full">
           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Guide</span>

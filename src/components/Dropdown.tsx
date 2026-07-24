@@ -51,15 +51,15 @@ export function Dropdown({
   )
 
   return (
-    <div ref={dropdownRef} {...wrapperEvents}>
+    <div ref={dropdownRef} className={clsx('relative', open && 'z-[100]')} {...wrapperEvents}>
       <div className="w-min cursor-pointer" {...targetEvents}>
         {target}
       </div>
-      <div className="relative">
+      <div className="relative z-[100]">
         <div
           ref={menuRef}
           className={clsx(
-            'absolute top-1 flex items-center justify-center overflow-hidden rounded-lg shadow-xl transition',
+            'absolute top-1 right-0 z-[100] flex items-center justify-center overflow-hidden rounded-lg shadow-2xl transition',
             !open && 'hidden',
           )}
         >

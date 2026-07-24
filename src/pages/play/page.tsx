@@ -242,10 +242,11 @@ export default function PlaySongPage() {
         const updatedTracks = { ...config.tracks }
         Object.keys(updatedTracks).forEach((trackIdStr) => {
           const trackId = Number(trackIdStr)
+          const isTarget = trackId === practiceTrackId
           updatedTracks[trackId] = {
             ...updatedTracks[trackId],
-            practice: trackId === practiceTrackId,
-            sound: true,
+            practice: isTarget,
+            sound: isTarget,
           }
         })
         config = {
