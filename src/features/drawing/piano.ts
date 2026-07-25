@@ -320,7 +320,7 @@ export function getVerticalPianoRollMeasurements(
 
   const whiteHeight = height / whiteKeysCount
   const whiteWidth = Math.floor(Math.min(5 * whiteHeight, 150)) // max-width
-  const blackHeight = whiteHeight * 0.70
+  const blackHeight = whiteHeight * 0.7
   const blackWidth = Math.floor(whiteWidth * (2 / 3))
   const whiteNoteSeparation = whiteHeight / 40
   const measurements: VerticalPianoRollMeasurements = {
@@ -341,7 +341,10 @@ export function getVerticalPianoRollMeasurements(
       const top = whiteMiddle - blackHeight / 2 - 2 - getBlackKeyXOffset(note) * blackHeight
       measurements.lanes[note] = { height: blackHeight, top, whiteMiddle }
     } else {
-      measurements.lanes[note] = { height: whiteHeight, top: height - whiteHeight * (whiteNotes + 1) }
+      measurements.lanes[note] = {
+        height: whiteHeight,
+        top: height - whiteHeight * (whiteNotes + 1),
+      }
       whiteNotes++
     }
   }
@@ -413,7 +416,7 @@ export async function drawVerticalPianoRoll(
     const width = isPressed ? blackWidth : blackWidth + 2
     roundRect(ctx, pianoLeftX, top, width, height, {
       topRadius: 0,
-      bottomRadius: height / 10
+      bottomRadius: height / 10,
     })
     const vBlackActiveColor = activeNotes.get(+midiNote)
     if (vBlackActiveColor) {

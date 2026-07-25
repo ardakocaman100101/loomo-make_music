@@ -91,12 +91,12 @@ export default function MovablePopup({
   return (
     <div
       ref={popupRef}
-      className={`fixed z-50 w-[280px] cursor-grab rounded-[20px] bg-black/25 backdrop-blur-xl border border-white/5 text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15),0_8px_32px_0_rgba(0,0,0,0.37)] select-none`}
+      className={`fixed z-50 w-[280px] cursor-grab rounded-[20px] border border-white/5 bg-black/25 text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15),0_8px_32px_0_rgba(0,0,0,0.37)] backdrop-blur-xl select-none`}
       style={{ transform: `translate(${position.x}px, ${position.y}px)` }}
       onMouseDown={handleMouseDown}
     >
       <div className="relative flex w-full flex-col overflow-hidden">
-        <div className="relative flex h-[50px] w-full cursor-grab items-center justify-between px-4 border-b border-white/5">
+        <div className="relative flex h-[50px] w-full cursor-grab items-center justify-between border-b border-white/5 px-4">
           {header}
         </div>
 

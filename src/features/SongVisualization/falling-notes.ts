@@ -145,7 +145,7 @@ function deriveState(state: GivenState): State {
   const noteHitY = pianoTopY - 120
 
   const averageLaneWidth = state.windowWidth / Math.max(endNote - startNote, 1)
-  const averageCircleRadius = (averageLaneWidth / 2) - 1
+  const averageCircleRadius = averageLaneWidth / 2 - 1
   // Perfect tolerance inside the circle, exactly matching the radius in terms of MS
   // Multiplied by 2.5 to make it more forgiving and easier to get green.
   const perfectRangeMs = (averageCircleRadius / state.pps) * 1000 * 1.5
@@ -217,7 +217,7 @@ export function getKeyboardRange(
 
   return {
     startNote: start,
-    endNote: end
+    endNote: end,
   }
 }
 
@@ -318,7 +318,7 @@ export function renderFallingVis(givenState: GivenState): void {
   const activeFingerings = new Map<number, number>()
   const perfectRangeMs = (Math.min(40 / 2, 250 / 2) / state.pps) * 1000 * 1.5
   const perfectRangeSec = perfectRangeMs / 1000
-  
+
   for (const item of items) {
     if (item.type === 'note' && item.finger !== undefined) {
       const noteItem = item as SongNote
@@ -404,8 +404,8 @@ function getNoteColor(state: State, note: SongNote, isActiveTarget: boolean): st
 
   if (isPressed && feedback && isActiveTarget) {
     // Only apply feedback color if the note is currently near or on the baseline.
-    const now = state.time;
-    const margin = state.player.goodRange / 1000; // convert ms to seconds
+    const now = state.time
+    const margin = state.player.goodRange / 1000 // convert ms to seconds
     if (now >= note.time - margin && now <= note.time + note.duration + margin) {
       return feedbackColors[feedback] ?? feedback
     }
@@ -432,7 +432,10 @@ function renderRange(state: State) {
   const { start, end } = state.selectedRange
   ctx.save()
   const duration = end - start
-  const canvasY = getItemStartEnd({ type: 'note', time: start, duration } as CanvasItem, state).start
+  const canvasY = getItemStartEnd(
+    { type: 'note', time: start, duration } as CanvasItem,
+    state,
+  ).start
   const rectHeight = duration * pps
   const posY = canvasY
   const tailTopY = canvasY - rectHeight
@@ -495,7 +498,11 @@ function renderLanes(state: State) {
   ctx.restore()
 }
 
-export function renderFallingNote(note: SongNote, state: State, isActiveTarget: boolean = false): void {
+export function renderFallingNote(
+  note: SongNote,
+  state: State,
+  isActiveTarget: boolean = false,
+): void {
   if (!(note.midiNote in state.pianoMeasurements.lanes)) {
     return
   }
@@ -503,7 +510,9 @@ export function renderFallingNote(note: SongNote, state: State, isActiveTarget: 
   const { ctx, pps, noteLabels, pianoTopY, pianoMeasurements } = state
   const lane = state.pianoMeasurements.lanes[note.midiNote]
   const keyTop = pianoTopY
-  const keyHeight = isBlack(note.midiNote) ? pianoMeasurements.blackHeight : pianoMeasurements.whiteHeight
+  const keyHeight = isBlack(note.midiNote)
+    ? pianoMeasurements.blackHeight
+    : pianoMeasurements.whiteHeight
 
   let posX = lane.left
   let noteWidth = lane.width
@@ -576,7 +585,7 @@ export function renderFallingNote(note: SongNote, state: State, isActiveTarget: 
   const circleCenterY = posY - circleRadius
 
   const isPerfectCircle = actualLength <= minLengthToDisplayCircle
-  const tailTopY = isPerfectCircle ? (circleCenterY - circleRadius) : (posY - length)
+  const tailTopY = isPerfectCircle ? circleCenterY - circleRadius : posY - length
 
   let overflowPixels = 0
   if (note.userPressStart !== undefined && feedbackColor !== undefined) {
@@ -586,7 +595,7 @@ export function renderFallingNote(note: SongNote, state: State, isActiveTarget: 
     }
   }
   const drawnTopY = tailTopY - overflowPixels
-  const r = isPerfectCircle ? circleRadius : (circleRadius * 0.4)
+  const r = isPerfectCircle ? circleRadius : circleRadius * 0.4
 
   const localPoints: { x: number; y: number }[] = []
 
@@ -615,7 +624,7 @@ export function renderFallingNote(note: SongNote, state: State, isActiveTarget: 
   const numCornerPoints = 6
   for (let j = 0; j <= numCornerPoints; j++) {
     const angle = Math.PI + (j / numCornerPoints) * (Math.PI / 2)
-    const x = (circleCenterX - circleRadius + r) + r * Math.cos(angle)
+    const x = circleCenterX - circleRadius + r + r * Math.cos(angle)
     const y = topCornerY + r * Math.sin(angle)
     localPoints.push({ x, y })
   }
@@ -623,7 +632,7 @@ export function renderFallingNote(note: SongNote, state: State, isActiveTarget: 
   // 3. Right-top rounded corner (from angle 1.5 * PI to 2 * PI)
   for (let j = 0; j <= numCornerPoints; j++) {
     const angle = 1.5 * Math.PI + (j / numCornerPoints) * (Math.PI / 2)
-    const x = (circleCenterX + circleRadius - r) + r * Math.cos(angle)
+    const x = circleCenterX + circleRadius - r + r * Math.cos(angle)
     const y = topCornerY + r * Math.sin(angle)
     localPoints.push({ x, y })
   }
@@ -636,7 +645,7 @@ export function renderFallingNote(note: SongNote, state: State, isActiveTarget: 
     localPoints.push({ x, y })
   }
 
-  const projectedPoints = localPoints.map(pt => projectPoint(pt.x, pt.y, state))
+  const projectedPoints = localPoints.map((pt) => projectPoint(pt.x, pt.y, state))
 
   ctx.beginPath()
   ctx.moveTo(projectedPoints[0].x, projectedPoints[0].y)
@@ -653,7 +662,10 @@ export function renderFallingNote(note: SongNote, state: State, isActiveTarget: 
   if (note.userPressStart !== undefined && feedbackColor !== undefined) {
     const pressEnd = note.userPressEnd ?? state.time
     if (note.duration > 0 && !isNaN(note.userPressStart) && !isNaN(pressEnd)) {
-      const origStartRatio = Math.min(1, Math.max(0, (note.userPressStart - note.time) / note.duration))
+      const origStartRatio = Math.min(
+        1,
+        Math.max(0, (note.userPressStart - note.time) / note.duration),
+      )
       const origEndRatio = Math.min(1, Math.max(0, (pressEnd - note.time) / note.duration))
       const extendedLength = length + overflowPixels
       startRatio = (origStartRatio * length) / extendedLength
@@ -673,12 +685,12 @@ export function renderFallingNote(note: SongNote, state: State, isActiveTarget: 
         g.addColorStop(0, getRgbaColor(defaultColor, 1.0))
         g.addColorStop(startRatio, getRgbaColor(defaultColor, 0.9))
       }
-      
+
       // Pressed segment is colored with the feedback color
       const startColorStop = startRatio > 0 ? startRatio : 0
       g.addColorStop(startColorStop, getRgbaColor(feedbackColor, 1.0))
       g.addColorStop(endRatio, getRgbaColor(feedbackColor, 0.9))
-      
+
       // Top segment of the note (after it was released) remains default color
       if (endRatio < 1) {
         g.addColorStop(endRatio, getRgbaColor(defaultColor, 0.9))
@@ -695,7 +707,10 @@ export function renderFallingNote(note: SongNote, state: State, isActiveTarget: 
     }
     grad = g
   } catch (e) {
-    console.warn('Failed to create linear gradient for note rendering, falling back to solid color:', e)
+    console.warn(
+      'Failed to create linear gradient for note rendering, falling back to solid color:',
+      e,
+    )
     grad = defaultColor
   }
 
@@ -707,7 +722,8 @@ export function renderFallingNote(note: SongNote, state: State, isActiveTarget: 
 
   const perfectRangeMs = (Math.min(40 / 2, 250 / 2) / state.pps) * 1000 * 1.5
   const perfectRangeSec = perfectRangeMs / 1000
-  const isFingeringActive = state.time >= (note.time - perfectRangeSec) && state.time <= (note.time + note.duration)
+  const isFingeringActive =
+    state.time >= note.time - perfectRangeSec && state.time <= note.time + note.duration
 
   const key = getKey(note.midiNote, state.keySignature)
   const labelType = noteLabels === 'none' ? 'alphabetical' : noteLabels
@@ -719,12 +735,7 @@ export function renderFallingNote(note: SongNote, state: State, isActiveTarget: 
     ctx.textAlign = 'center'
     const padding = 2
     const maxWidth = (circleRadius * 2 - padding * 2) * center.scale
-    let { fontPx } = getOptimalFontSize(
-      ctx,
-      noteText,
-      TEXT_FONT,
-      maxWidth,
-    )
+    let { fontPx } = getOptimalFontSize(ctx, noteText, TEXT_FONT, maxWidth)
     fontPx = Math.min(fontPx, maxWidth * 0.8)
 
     if (noteText.includes('#')) {

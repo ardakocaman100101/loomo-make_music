@@ -1,8 +1,8 @@
 import { isBrowser } from '@/utils'
+import { Tone909DrumMachineSynth } from './drum-machine-909'
 import gmInstruments from './instruments'
 import { loadInstrument } from './loadInstrument'
 import { ToneSamplerSynth } from './tone-synth'
-import { Tone909DrumMachineSynth } from './drum-machine-909'
 import { InstrumentName, Synth } from './types'
 
 function isValidInstrument(instrument: InstrumentName | undefined) {

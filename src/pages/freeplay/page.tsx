@@ -1,18 +1,18 @@
 import midiState, { useRecordMidi } from '@/features/midi'
+import { parseMidi } from '@/features/parsers'
+import { initialize, registerCustomSketch } from '@/features/persist/persistence'
 import { SongVisualizer } from '@/features/SongVisualization'
 import { InstrumentName, useSynth } from '@/features/synth'
 import { useLazyStableRef } from '@/hooks'
+import { StartRecord, StopRecord } from '@/icons'
 import { MidiModal } from '@/pages/play/components/MidiModal'
 import { MidiStateEvent, SongConfig } from '@/types'
+import * as idb from 'idb-keyval'
+import { ZoomIn, ZoomOut } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router'
 import TopBar from './components/TopBar'
 import FreePlayer from './utils/free-player'
-import { parseMidi } from '@/features/parsers'
-import { registerCustomSketch, initialize } from '@/features/persist/persistence'
-import { ZoomIn, ZoomOut } from 'lucide-react'
-import { StartRecord, StopRecord } from '@/icons'
-import * as idb from 'idb-keyval'
-import { useNavigate } from 'react-router'
 
 export default function FreePlay() {
   const navigate = useNavigate()
@@ -110,7 +110,7 @@ export default function FreePlay() {
     <>
       <title>Practice Mode</title>
       <div
-        className="flex h-screen w-screen flex-col outline-none bg-[#16182c]"
+        className="flex h-screen w-screen flex-col bg-[#16182c] outline-none"
         {...midiState.getListenerProps()}
         autoFocus
       >
@@ -125,20 +125,20 @@ export default function FreePlay() {
           }}
         />
         <MidiModal isOpen={isMidiModalOpen} onClose={() => setMidiModal(false)} />
-        
+
         {/* Floating Zoom Controls (Left Side, like Play Mode) */}
-        <div className="absolute left-6 top-[40%] -translate-y-1/2 z-30 flex flex-col gap-4 pointer-events-auto select-none">
-          <div className="flex flex-col rounded-[20px] bg-black/45 backdrop-blur-xl shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15),0_8px_32px_0_rgba(0,0,0,0.37)] border border-white/5 overflow-hidden w-[52px] justify-between">
+        <div className="pointer-events-auto absolute top-[40%] left-6 z-30 flex -translate-y-1/2 flex-col gap-4 select-none">
+          <div className="flex w-[52px] flex-col justify-between overflow-hidden rounded-[20px] border border-white/5 bg-black/45 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15),0_8px_32px_0_rgba(0,0,0,0.37)] backdrop-blur-xl">
             <button
-              className="cursor-pointer p-3.5 text-white/70 hover:text-white transition hover:bg-white/5 flex items-center justify-center border-0 bg-transparent"
+              className="flex cursor-pointer items-center justify-center border-0 bg-transparent p-3.5 text-white/70 transition hover:bg-white/5 hover:text-white"
               onClick={() => setScaleIndex((i) => Math.min(ppsScales.length - 1, i + 1))}
               title="Zoom In"
             >
               <ZoomIn className="h-5 w-5" />
             </button>
-            <div className="h-[1px] bg-white/10 w-full" />
+            <div className="h-[1px] w-full bg-white/10" />
             <button
-              className="cursor-pointer p-3.5 text-white/70 hover:text-white transition hover:bg-white/5 flex items-center justify-center border-0 bg-transparent"
+              className="flex cursor-pointer items-center justify-center border-0 bg-transparent p-3.5 text-white/70 transition hover:bg-white/5 hover:text-white"
               onClick={() => setScaleIndex((i) => Math.max(0, i - 1))}
               title="Zoom Out"
             >
@@ -148,16 +148,19 @@ export default function FreePlay() {
         </div>
 
         {/* Floating Record Toggle Button (Right Side, side of the last note lane's right) */}
-        <div className="absolute right-6 top-[40%] -translate-y-1/2 z-30 flex flex-col gap-4 pointer-events-auto select-none">
+        <div className="pointer-events-auto absolute top-[40%] right-6 z-30 flex -translate-y-1/2 flex-col gap-4 select-none">
           <button
             onClick={handleRecordToggle}
-            className="w-14 h-14 rounded-full bg-black/45 backdrop-blur-xl border border-white/5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15),0_8px_32px_0_rgba(0,0,0,0.37)] flex items-center justify-center cursor-pointer hover:bg-white/5 active:scale-95 transition-all"
+            className="flex h-14 w-14 cursor-pointer items-center justify-center rounded-full border border-white/5 bg-black/45 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15),0_8px_32px_0_rgba(0,0,0,0.37)] backdrop-blur-xl transition-all hover:bg-white/5 active:scale-95"
             title={isRecording ? 'Stop Recording' : 'Start Recording'}
           >
             {isRecording ? (
-              <StopRecord size={28} className="text-red-500 hover:text-red-400 transition-colors animate-pulse" />
+              <StopRecord
+                size={28}
+                className="animate-pulse text-red-500 transition-colors hover:text-red-400"
+              />
             ) : (
-              <StartRecord size={28} className="text-white/70 hover:text-white transition-colors" />
+              <StartRecord size={28} className="text-white/70 transition-colors hover:text-white" />
             )}
           </button>
         </div>

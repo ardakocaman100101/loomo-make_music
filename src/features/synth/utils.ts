@@ -1,6 +1,6 @@
-import * as Tone from 'tone'
 import { isBrowser } from '@/utils'
 import { atom, getDefaultStore } from 'jotai'
+import * as Tone from 'tone'
 import { getOctave } from '../theory'
 
 type JotaiStore = ReturnType<typeof getDefaultStore>
@@ -33,12 +33,12 @@ export function getKeyForSoundfont(note: number) {
 
 if (isBrowser()) {
   const handleUserInteraction = () => {
-    Tone.start()
-    document.removeEventListener('touchstart', handleUserInteraction)
-    document.removeEventListener('touchend', handleUserInteraction)
-    document.removeEventListener('click', handleUserInteraction)
+    if (Tone.getContext().state !== 'running') {
+      Tone.start()
+    }
   }
-  document.addEventListener('touchstart', handleUserInteraction)
-  document.addEventListener('touchend', handleUserInteraction)
-  document.addEventListener('click', handleUserInteraction)
+  document.addEventListener('touchstart', handleUserInteraction, { passive: true })
+  document.addEventListener('touchend', handleUserInteraction, { passive: true })
+  document.addEventListener('click', handleUserInteraction, { passive: true })
+  document.addEventListener('keydown', handleUserInteraction, { passive: true })
 }

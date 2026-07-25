@@ -138,7 +138,9 @@ export const DEFAULT_INSTRUMENT: InstrumentName = 'acoustic_grand_piano'
 const ANCHOR_NOTES = ['C2', 'G2', 'C3', 'G3', 'C4', 'G4', 'C5', 'G5', 'C6']
 
 export function getInstrumentSampleMap(instrument: string): Record<string, string> {
-  const targetInstrument = gmInstruments.includes(instrument as any) ? instrument : DEFAULT_INSTRUMENT
+  const targetInstrument = gmInstruments.includes(instrument as any)
+    ? instrument
+    : DEFAULT_INSTRUMENT
   const sampleMap: Record<string, string> = {}
   for (const note of ANCHOR_NOTES) {
     sampleMap[note] = `/samples/${targetInstrument}/${note}.mp3`

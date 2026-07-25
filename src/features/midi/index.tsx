@@ -1,8 +1,10 @@
+import { getAudioEffectsBus } from '@/features/synth/effects-bus'
 import { getNote } from '@/features/theory'
 import { MidiStateEvent } from '@/types'
 import { isBrowser } from '@/utils'
 import * as tonejs from '@tonejs/midi'
 import { useRef, useState } from 'react'
+import * as Tone from 'tone'
 
 let globalMidiAccess: MIDIAccess | null = null
 
@@ -17,7 +19,10 @@ export async function getMidiInputs(): Promise<MIDIInputMap> {
       globalMidiAccess.onstatechange = (e) => {
         if (e.port && e.port.type === 'input' && e.port.state === 'connected') {
           const device = e.port as MIDIInput
-          if (!device.name?.toLowerCase().includes('through') && !isInputMidiDeviceEnabled(device)) {
+          if (
+            !device.name?.toLowerCase().includes('through') &&
+            !isInputMidiDeviceEnabled(device)
+          ) {
             enableInputMidiDevice(device)
           }
         }
@@ -41,7 +46,10 @@ export async function getMidiOutputs(): Promise<MIDIOutputMap> {
       globalMidiAccess.onstatechange = (e) => {
         if (e.port && e.port.type === 'input' && e.port.state === 'connected') {
           const device = e.port as MIDIInput
-          if (!device.name?.toLowerCase().includes('through') && !isInputMidiDeviceEnabled(device)) {
+          if (
+            !device.name?.toLowerCase().includes('through') &&
+            !isInputMidiDeviceEnabled(device)
+          ) {
             enableInputMidiDevice(device)
           }
         }
@@ -66,6 +74,7 @@ export function isOutputMidiDeviceEnabled(device: MIDIOutput) {
 
 export function enableInputMidiDevice(device: MIDIInput) {
   device.open()
+  device.onmidimessage = onMidiMessage
   device.addEventListener('midimessage', onMidiMessage)
   enabledInputDevices.set(device.id, device)
   midiState.updateDetectedRange()
@@ -110,7 +119,7 @@ export async function initializeMidi() {
 }
 
 export type MidiEvent = {
-  type: 'on' | 'off' | 'cc'
+  type: 'on' | 'off' | 'cc' | 'pitchbend'
   velocity?: number
   note?: number
   cc?: number
@@ -121,7 +130,7 @@ export type MidiEvent = {
 
 function parseMidiMessage(event: MIDIMessageEvent): MidiEvent | null {
   const data = event.data!
-  if (data.length !== 3) {
+  if (!data || data.length < 2) {
     return null
   }
 
@@ -129,12 +138,12 @@ function parseMidiMessage(event: MIDIMessageEvent): MidiEvent | null {
   const command = status >>> 4
   const channel = status & 0x0f
 
-  // 0x8 = Note Off, 0x9 = Note On, 0xB = Control Change
+  // 0x8 = Note Off, 0x9 = Note On, 0xB = Control Change, 0xE = Pitch Bend
   if (command === 0x8 || command === 0x9) {
     return {
       type: command === 0x9 ? 'on' : 'off',
       note: data[1],
-      velocity: data[2],
+      velocity: data[2] ?? 0,
       timeStamp: event.timeStamp,
       channel,
     }
@@ -144,7 +153,20 @@ function parseMidiMessage(event: MIDIMessageEvent): MidiEvent | null {
     return {
       type: 'cc',
       cc: data[1],
-      value: data[2],
+      value: data[2] ?? 0,
+      timeStamp: event.timeStamp,
+      channel,
+    }
+  }
+
+  if (command === 0xe) {
+    // 14-bit Pitch Bend value (LSB: data[1], MSB: data[2])
+    const lsb = data[1] ?? 0
+    const msb = data[2] ?? 0
+    const bendValue = (msb << 7) | lsb
+    return {
+      type: 'pitchbend',
+      value: bendValue,
       timeStamp: event.timeStamp,
       channel,
     }
@@ -383,17 +405,163 @@ if (isBrowser()) {
 }
 
 function onMidiMessage(e: MIDIMessageEvent) {
+  if (isBrowser() && Tone.getContext().state !== 'running') {
+    Tone.start()
+  }
+
   const msg: MidiEvent | null = parseMidiMessage(e)
   if (!msg) {
     return
   }
 
-  const { note, velocity, cc, value, type, timeStamp, channel } = msg
+  const { note, velocity, cc, value, type, channel } = msg
+  const bus = getAudioEffectsBus()
+
   if (type === 'on' && velocity! > 0) {
     midiState.press(note! + midiState.midiOctaveDiff * 12, velocity!, channel)
   } else if (type === 'off' || (type === 'on' && velocity === 0)) {
     midiState.release(note! + midiState.midiOctaveDiff * 12, channel)
-  } else if (type === 'cc') {
+  } else if (type === 'pitchbend' && value !== undefined) {
+    // value is 0 to 16383, 8192 is center
+    const normalizedBend = (value - 8192) / 8192
+    const semitones = normalizedBend * 12 // +/- 12 semitones pitch bend
+    bus.setPitchBend(semitones)
+  } else if (type === 'cc' && cc !== undefined && value !== undefined) {
+    // Relative vs Absolute Encoder check for Arturia MiniLab 3
+    let isRelative = false
+    let delta = 0
+    if (value >= 61 && value <= 63) {
+      isRelative = true
+      delta = -(64 - value) * 0.04
+    } else if (value >= 65 && value <= 67) {
+      isRelative = true
+      delta = (value - 64) * 0.04
+    } else if (value === 127) {
+      isRelative = true
+      delta = -0.04
+    } else if (value === 1) {
+      isRelative = true
+      delta = 0.04
+    }
+
+    const valRatio = value / 127
+    const state = bus.getState()
+
+    // Arturia MiniLab 3 & Standard Hardware CC mapping matrix:
+    switch (cc) {
+      // --- KNOB 1 (Top-Left): CUTOFF FREQUENCY (20Hz to 20000Hz) ---
+      case 86: // MiniLab 3 Knob 1 (DAW Mode)
+      case 74: // Standard Brightness / Cutoff
+      case 16: // MiniLab 3 User Knob 1
+      case 20: // General Purpose 1
+      case 1: // Mod Wheel
+        if (isRelative) {
+          const curLog = Math.log10(state.cutoff)
+          const newLog = Math.max(Math.log10(20), Math.min(Math.log10(20000), curLog + delta * 0.4))
+          bus.setCutoff(Math.pow(10, newLog))
+        } else {
+          bus.setCutoff(20 * Math.pow(1000, valRatio))
+        }
+        break
+
+      // --- KNOB 2 (Top-Right): DISTORTION AMOUNT (0 to 1) ---
+      case 87: // MiniLab 3 Knob 2 (DAW Mode)
+      case 71: // Sound Controller 2
+      case 17: // MiniLab 3 User Knob 2
+      case 21: // General Purpose 2
+      case 13:
+      case 70:
+        if (isRelative) {
+          bus.setDistortion(Math.max(0, Math.min(1, state.distortion + delta)))
+        } else {
+          bus.setDistortion(valRatio)
+        }
+        break
+
+      // --- KNOB 3 (UI Bottom-Left): BASS BOOST (0 to 12 dB) ---
+      // Triggered EXCLUSIVELY by MiniLab 3 Physical Knob 5 (CC 110 / 90 / 80 / 18)
+      case 110: // MiniLab 3 Knob 5 (Bottom 1st / Under 1st Knob)
+      case 90: // MiniLab 3 Knob 5 Alternate
+      case 80: // MiniLab 3 Knob 5 User
+      case 18:
+      case 22:
+        if (isRelative) {
+          bus.setBassBoost(Math.max(0, Math.min(12, state.bassBoost + delta * 12)))
+        } else {
+          bus.setBassBoost(valRatio * 12)
+        }
+        break
+
+      // --- KNOB 4 (UI Bottom-Right): DELAY TIME (0.01s to 1.0s) ---
+      // Triggered EXCLUSIVELY by MiniLab 3 Physical Knob 6 (CC 111 / 93 / 81 / 19)
+      case 111: // MiniLab 3 Knob 6 (Bottom 2nd / Under 2nd Knob)
+      case 93: // MiniLab 3 Knob 6 Alternate
+      case 81: // MiniLab 3 Knob 6 User
+      case 19:
+      case 23:
+      case 12:
+        if (isRelative) {
+          bus.setDelayTime(Math.max(0.01, Math.min(1.0, state.delayTime + delta)))
+        } else {
+          bus.setDelayTime(0.01 + valRatio * 0.99)
+        }
+        break
+
+      // --- FADER 1: VOLUME OUTPUT (0 to 1.2) ---
+      case 82: // MiniLab 3 Fader 1 / Slider 1 (DAW Mode)
+      case 73: // MiniLab 3 Sound Controller 4
+      case 7: // Channel Volume
+      case 14:
+      case 24:
+        if (isRelative) {
+          bus.setVolume(Math.max(0, Math.min(1.2, state.volume + delta * 1.2)))
+        } else {
+          bus.setVolume(valRatio * 1.2)
+        }
+        break
+
+      // --- FADER 2: REVERB MIX (0 to 1) ---
+      case 83: // MiniLab 3 Fader 2 / Slider 2 (DAW Mode)
+      case 75: // MiniLab 3 Sound Controller 6
+      case 91: // Reverb Depth
+      case 15:
+      case 25:
+        if (isRelative) {
+          bus.setReverbMix(Math.max(0, Math.min(1, state.reverbMix + delta)))
+        } else {
+          bus.setReverbMix(valRatio)
+        }
+        break
+
+      // --- FADER 3: DELAY MIX (0 to 1) ---
+      case 84: // MiniLab 3 Fader 3 / Slider 3 (DAW Mode)
+      case 79: // MiniLab 3 Sound Controller 10
+      case 92: // Tremolo / Delay Depth
+      case 26:
+      case 30:
+        if (isRelative) {
+          bus.setDelayMix(Math.max(0, Math.min(1, state.delayMix + delta)))
+        } else {
+          bus.setDelayMix(valRatio)
+        }
+        break
+
+      // --- FADER 4: FILTER RESONANCE (0.1 to 20 Q) ---
+      case 85: // MiniLab 3 Fader 4 / Slider 4 (DAW Mode)
+      case 72: // Sound Controller 3
+      case 27:
+      case 31:
+        if (isRelative) {
+          bus.setResonance(Math.max(0.1, Math.min(20, state.resonance + delta * 10)))
+        } else {
+          bus.setResonance(0.1 + valRatio * 19.9)
+        }
+        break
+
+      default:
+        break
+    }
+
     midiState.notify({
       type: 'cc',
       cc,
@@ -491,4 +659,3 @@ async function setupMidiDeviceListeners() {
 }
 
 export default midiState
-

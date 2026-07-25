@@ -9,7 +9,7 @@ export default defineConfig({
   server: {
     allowedHosts: [
       'proddingly-ericeticolous-diego.ngrok-free.dev', // Allows this specific host
-      '.ngrok-free.dev'                                // Optional: Allows ANY future ngrok host you generate
-    ]
-  }
+      '.ngrok-free.dev', // Optional: Allows ANY future ngrok host you generate
+    ],
+  },
 })

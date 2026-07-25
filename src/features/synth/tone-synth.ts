@@ -1,7 +1,7 @@
 import * as Tone from 'tone'
 import midi from '../midi'
-import { InstrumentName, Synth } from './types'
 import { getGlobalEffectsBus } from './effects-bus'
+import { InstrumentName, Synth } from './types'
 import { isAudioContextEnabled } from './utils'
 
 export class ToneSamplerSynth implements Synth {
@@ -66,6 +66,14 @@ export class ToneSamplerSynth implements Synth {
     const clampedVol = Math.max(0.0001, Math.min(1, vol))
     // Convert linear volume to decibels
     this.sampler.volume.value = Tone.gainToDb(clampedVol)
+  }
+
+  setPitchBend(semitones: number) {
+    // Convert semitones (-12 to +12) to cents (-1200 to +1200)
+    const samplerAny = this.sampler as any
+    if (samplerAny && samplerAny.detune) {
+      samplerAny.detune.value = semitones * 100
+    }
   }
 
   getInstrument(): InstrumentName {

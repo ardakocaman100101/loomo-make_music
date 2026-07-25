@@ -52,7 +52,7 @@ export default function TopBar({
   statsVisible,
 }: TopBarProps) {
   return (
-    <div className="fixed top-0 left-0 w-full h-[78px] z-[100] bg-[#131313]/20 backdrop-blur-3xl border-b border-white/5 flex items-center select-none shadow-[0_8px_32px_rgba(0,0,0,0.37)] px-6">
+    <div className="fixed top-0 left-0 z-[100] flex h-[78px] w-full items-center border-b border-white/5 bg-[#131313]/20 px-6 shadow-[0_8px_32px_rgba(0,0,0,0.37)] backdrop-blur-3xl select-none">
       {/* Left side: Back button */}
       <div className="flex items-center">
         <ButtonWithTooltip tooltip="Back" onClick={onClickBack}>
@@ -61,10 +61,16 @@ export default function TopBar({
       </div>
 
       {/* Center: Absolute centered Loomo Identity */}
-      <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2">
-        <Link to="/" onClick={onClickBack} className="flex items-center gap-3 group">
-          <Logo height={42} width={77} className="w-[77px] h-10.5 shadow-[0_0_15px_rgba(160,120,255,0.3)] group-hover:scale-105 transition-all cursor-pointer" />
-          <span className="text-3xl sm:text-4xl font-black tracking-tighter text-[#e5e2e1] group-hover:text-[#d0bcff] transition-all cursor-pointer">loomo</span>
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+        <Link to="/" onClick={onClickBack} className="group flex items-center gap-3">
+          <Logo
+            height={42}
+            width={77}
+            className="h-10.5 w-[77px] cursor-pointer shadow-[0_0_15px_rgba(160,120,255,0.3)] transition-all group-hover:scale-105"
+          />
+          <span className="cursor-pointer text-3xl font-black tracking-tighter text-[#e5e2e1] transition-all group-hover:text-[#d0bcff] sm:text-4xl">
+            loomo
+          </span>
         </Link>
       </div>
 
@@ -80,7 +86,10 @@ export default function TopBar({
           </div>
         )}
 
-        <ButtonWithTooltip tooltip={statsVisible ? 'Hide Stats' : 'Show Stats'} onClick={onClickStats}>
+        <ButtonWithTooltip
+          tooltip={statsVisible ? 'Hide Stats' : 'Show Stats'}
+          onClick={onClickStats}
+        >
           <BarChart2
             size={32}
             className={statsVisible ? 'text-white' : 'text-white/40 hover:text-white'}
@@ -90,4 +99,3 @@ export default function TopBar({
     </div>
   )
 }
-

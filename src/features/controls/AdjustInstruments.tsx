@@ -8,8 +8,8 @@ import { Song, SongConfig, TrackSetting } from '@/types'
 import { formatInstrumentName } from '@/utils'
 import clsx from 'clsx'
 import { getDefaultStore, useAtomValue } from 'jotai'
-import React, { useState } from 'react'
 import { Target } from 'lucide-react'
+import React, { useState } from 'react'
 
 type InstrumentSettingsProps = {
   config: SongConfig
@@ -271,7 +271,10 @@ function TogglePractice({ on, onClick }: ToggleIconProps) {
       <Target
         height={32}
         width={32}
-        className={clsx('transition cursor-pointer', on ? 'text-purple-primary' : 'text-gray-400 hover:text-purple-hover')}
+        className={clsx(
+          'cursor-pointer transition',
+          on ? 'text-purple-primary' : 'hover:text-purple-hover text-gray-400',
+        )}
         onClick={onClick}
       />
       <span style={labelStyle}>{labelText}</span>

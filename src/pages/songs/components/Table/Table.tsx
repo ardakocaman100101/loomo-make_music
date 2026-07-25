@@ -48,8 +48,7 @@ export default function Table<T extends Row>({
   const gridTemplateColumns = `repeat(${columns.length}, 1fr)`
 
   return (
-    <div className="flex flex-col grow min-h-[300px] bg-white/5 border border-white/10 backdrop-blur-xl rounded-2xl shadow-[0_8px_32px_0_rgba(160,120,255,0.05)] overflow-hidden">
-      
+    <div className="flex min-h-[300px] grow flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-[0_8px_32px_0_rgba(160,120,255,0.05)] backdrop-blur-xl">
       {/* Table Header Row */}
       <div className="grid border-b border-white/10 bg-white/5" style={{ gridTemplateColumns }}>
         <TableHead
@@ -64,7 +63,7 @@ export default function Table<T extends Row>({
       <div className="relative flex-1 overflow-y-auto">
         <div className="grid w-full content-start" style={{ gridTemplateColumns }}>
           {sorted.length === 0 && (
-            <h2 className="p-8 text-xl font-light text-[#cbc3d5]/60 text-center w-full col-span-full">
+            <h2 className="col-span-full w-full p-8 text-center text-xl font-light text-[#cbc3d5]/60">
               No results
             </h2>
           )}
@@ -83,7 +82,7 @@ export default function Table<T extends Row>({
                   const paddingLeft = j === 0 ? 24 : 12
                   return (
                     <span
-                      className="relative flex shrink-0 items-center px-4 text-sm font-light text-[#e7e0ec]/80 border-b border-white/5 group-hover:bg-[#a078ff]/10 group-hover:text-white transition-all duration-200"
+                      className="relative flex shrink-0 items-center border-b border-white/5 px-4 text-sm font-light text-[#e7e0ec]/80 transition-all duration-200 group-hover:bg-[#a078ff]/10 group-hover:text-white"
                       key={`row-${i}-col-${j}`}
                       style={{ paddingLeft, height: rowHeight }}
                     >
@@ -96,7 +95,6 @@ export default function Table<T extends Row>({
           })}
         </div>
       </div>
-
     </div>
   )
 }

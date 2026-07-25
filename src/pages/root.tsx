@@ -1,5 +1,6 @@
 import { GA_TRACKING_ID } from '@/features/analytics'
 import styles from '@/styles/global.css?inline'
+import { useEffect } from 'react'
 import { Outlet, Scripts, ScrollRestoration } from 'react-router'
 import { Providers } from './providers'
 
@@ -19,10 +20,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta property="og:site_name" content="loomo" />
         <meta property="og:description" content="app for learning piano" />
         <meta property="og:image" content="/images/mode_falling_notes_screenshot.png" />
-        <meta
-          property="og:image:alt"
-          content="loomo demo displaying falling notes visualization"
-        />
+        <meta property="og:image:alt" content="loomo demo displaying falling notes visualization" />
 
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
@@ -65,8 +63,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
   )
 }
 
-import { useEffect } from 'react'
-
 export default function App() {
   useEffect(() => {
     let timeouts = new Map<HTMLElement, any>()
@@ -88,13 +84,13 @@ export default function App() {
         target.classList.remove('is-scrolling')
         timeouts.delete(target)
       }, 800)
-      
+
       timeouts.set(target, t)
     }
 
     // Listen to all scroll events in capture phase
     window.addEventListener('scroll', handleScroll, true)
-    
+
     return () => {
       window.removeEventListener('scroll', handleScroll, true)
       timeouts.forEach((t) => clearTimeout(t))

@@ -21,23 +21,23 @@ import { useAtomValue } from 'jotai'
 import {
   AlertCircle,
   ArrowLeft,
+  Loader2,
+  Pause,
+  Play,
   RefreshCw,
-  ZoomIn,
-  ZoomOut,
+  Repeat,
   SkipBack,
   SkipForward,
-  Repeat,
   Target,
-  Play,
-  Pause,
-  Loader2,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { TopBar, TrackHUD } from './components'
-import { ButtonWithTooltip } from './components/TopBar'
 import { MidiModal } from './components/MidiModal'
 import { StatsPopup } from './components/StatsPopup'
+import { ButtonWithTooltip } from './components/TopBar'
 
 function RequiresPermissionPrompt({
   onGrantPermission,
@@ -159,24 +159,32 @@ export default function PlaySongPage() {
     }
   }, [currentBpm, bpmModifier, player])
 
-  const handleBpmInputChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = parseInt(e.target.value, 10)
-    if (!isNaN(val) && val >= 20 && val <= 300) {
-      const newModifier = bpmModifier * (val / currentBpm)
-      player.store.set(player.bpmModifier, Math.round(newModifier * 100) / 100)
-      const backingTrack = player.getSong()?.backing
-      if (backingTrack) {
-        backingTrack.playbackRate = newModifier
+  const handleBpmInputChange = React.useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const val = parseInt(e.target.value, 10)
+      if (!isNaN(val) && val >= 20 && val <= 300) {
+        const newModifier = bpmModifier * (val / currentBpm)
+        player.store.set(player.bpmModifier, Math.round(newModifier * 100) / 100)
+        const backingTrack = player.getSong()?.backing
+        if (backingTrack) {
+          backingTrack.playbackRate = newModifier
+        }
       }
-    }
-  }, [currentBpm, bpmModifier, player])
+    },
+    [currentBpm, bpmModifier, player],
+  )
 
-  const handleWheel = React.useCallback((e: React.WheelEvent) => {
-    if (e.ctrlKey) {
-      e.preventDefault()
-      setScaleIndex((i) => e.deltaY < 0 ? Math.min(ppsScales.length - 1, i + 1) : Math.max(0, i - 1))
-    }
-  }, [ppsScales.length])
+  const handleWheel = React.useCallback(
+    (e: React.WheelEvent) => {
+      if (e.ctrlKey) {
+        e.preventDefault()
+        setScaleIndex((i) =>
+          e.deltaY < 0 ? Math.min(ppsScales.length - 1, i + 1) : Math.max(0, i - 1),
+        )
+      }
+    },
+    [ppsScales.length],
+  )
   const playerState = usePlayerState()
   const instrumentVolume = useAtomValue(player.instrumentVolume)
   let { data: song, error, isLoading, mutate } = useSong(id, source)
@@ -264,7 +272,9 @@ export default function PlaySongPage() {
       player.store.set(player.progressiveMode, true)
       player.store.set(player.completedTracks, new Set<number>())
 
-      const tracks = Object.keys(song.tracks).map(Number).sort((a, b) => a - b)
+      const tracks = Object.keys(song.tracks)
+        .map(Number)
+        .sort((a, b) => a - b)
       if (tracks.length > 0) {
         player.setupProgressiveRegion_(tracks[0])
       }
@@ -456,11 +466,11 @@ export default function PlaySongPage() {
               statsVisible={statsVisible}
             />
             <MidiModal isOpen={isMidiModalOpen} onClose={() => setMidiModal(false)} />
-            
+
             {/* Relocated Bottom Control Bar (Full Width, Anchored) */}
-            <div className="fixed bottom-0 left-0 w-full h-[60px] z-40 bg-[#131313]/70 backdrop-blur-xl border-t border-[#6c79f0]/40 flex items-center justify-between px-6 select-none shadow-[0_-8px_32px_rgba(0,0,0,0.37),inset_0_1px_0_0_rgba(108,121,240,0.35)] pointer-events-auto">
+            <div className="pointer-events-auto fixed bottom-0 left-0 z-40 flex h-[60px] w-full items-center justify-between border-t border-[#6c79f0]/40 bg-[#131313]/70 px-6 shadow-[0_-8px_32px_rgba(0,0,0,0.37),inset_0_1px_0_0_rgba(108,121,240,0.35)] backdrop-blur-xl select-none">
               {/* Scrub Bar at the top edge, spanning full width */}
-              <div className="absolute top-0 left-0 w-full transform -translate-y-1/2">
+              <div className="absolute top-0 left-0 w-full -translate-y-1/2 transform">
                 <SongScrubBar
                   rangeSelection={selectedRange}
                   setRange={(range: any) => player.setRange(range)}
@@ -469,37 +479,53 @@ export default function PlaySongPage() {
 
               {/* Left Section: Time display */}
               <div className="flex items-center">
-                <span ref={elapsedRef} className="text-xs font-mono text-white/60 tracking-wider" />
+                <span ref={elapsedRef} className="font-mono text-xs tracking-wider text-white/60" />
               </div>
 
               {/* Center Section: Playback Controls */}
-              <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-6">
+              <div className="absolute left-1/2 flex -translate-x-1/2 items-center gap-6">
                 <ButtonWithTooltip tooltip="Restart">
-                  <SkipBack size={20} className="text-white/70 hover:text-white transition-colors duration-200" onClick={() => player.restart()} />
+                  <SkipBack
+                    size={20}
+                    className="text-white/70 transition-colors duration-200 hover:text-white"
+                    onClick={() => player.restart()}
+                  />
                 </ButtonWithTooltip>
 
                 <button
-                  className="flex items-center justify-center rounded-full p-2.5 bg-[#6c79f0] hover:bg-[#9ba4ff] active:scale-95 transition-all text-black shadow-[0_0_15px_rgba(108,121,240,0.4)]"
+                  className="flex items-center justify-center rounded-full bg-[#6c79f0] p-2.5 text-black shadow-[0_0_15px_rgba(108,121,240,0.4)] transition-all hover:bg-[#9ba4ff] active:scale-95"
                   onClick={() => player.toggle()}
                 >
                   {!playerState.canPlay ? (
-                    <Loader2 className="w-5 h-5 animate-spin text-black" />
+                    <Loader2 className="h-5 w-5 animate-spin text-black" />
                   ) : playerState.playing ? (
-                    <Pause className="w-5 h-5 fill-black text-black" />
+                    <Pause className="h-5 w-5 fill-black text-black" />
                   ) : (
-                    <Play className="w-5 h-5 fill-black text-black translate-x-[1px]" />
+                    <Play className="h-5 w-5 translate-x-[1px] fill-black text-black" />
                   )}
                 </button>
 
                 <ButtonWithTooltip tooltip="Skip to End">
-                  <SkipForward size={20} className="text-white/70 hover:text-white transition-colors duration-200" onClick={() => player.seek(player.getDuration())} />
+                  <SkipForward
+                    size={20}
+                    className="text-white/70 transition-colors duration-200 hover:text-white"
+                    onClick={() => player.seek(player.getDuration())}
+                  />
                 </ButtonWithTooltip>
 
-                <ButtonWithTooltip tooltip="Toggle Loop" isActive={songLoop} onClick={() => player.store.set(player.songLoop, !songLoop)}>
+                <ButtonWithTooltip
+                  tooltip="Toggle Loop"
+                  isActive={songLoop}
+                  onClick={() => player.store.set(player.songLoop, !songLoop)}
+                >
                   <Repeat size={20} className="transition-colors duration-200" />
                 </ButtonWithTooltip>
 
-                <ButtonWithTooltip tooltip="Wait Mode" isActive={waiting} onClick={() => setSongConfig({ ...songConfig, waiting: !waiting })}>
+                <ButtonWithTooltip
+                  tooltip="Wait Mode"
+                  isActive={waiting}
+                  onClick={() => setSongConfig({ ...songConfig, waiting: !waiting })}
+                >
                   <Target size={20} className="transition-colors duration-200" />
                 </ButtonWithTooltip>
               </div>
@@ -509,14 +535,16 @@ export default function PlaySongPage() {
             </div>
 
             {statsVisible && <StatsPopup />}
-            <div className="absolute left-4 top-20 z-30 flex flex-col gap-4 pointer-events-auto">
+            <div className="pointer-events-auto absolute top-20 left-4 z-30 flex flex-col gap-4">
               <div className="flex items-stretch gap-3">
                 {/* BPM Ticket */}
-                <div className="flex flex-col justify-between rounded-[20px] bg-black/45 backdrop-blur-xl shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15),0_8px_32px_0_rgba(0,0,0,0.37)] border border-white/5 p-3 w-[168px]">
-                  <span className="text-[12px] font-black uppercase tracking-[0.18em] text-[#6c79f0] text-center mb-1.5 select-none">TEMPO (BPM)</span>
+                <div className="flex w-[168px] flex-col justify-between rounded-[20px] border border-white/5 bg-black/45 p-3 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15),0_8px_32px_0_rgba(0,0,0,0.37)] backdrop-blur-xl">
+                  <span className="mb-1.5 text-center text-[12px] font-black tracking-[0.18em] text-[#6c79f0] uppercase select-none">
+                    TEMPO (BPM)
+                  </span>
                   <div className="flex items-center justify-between gap-1">
                     <button
-                      className="cursor-pointer text-white/50 hover:text-white font-light text-2xl w-8 h-8 flex items-center justify-center transition select-none bg-transparent border-0"
+                      className="flex h-8 w-8 cursor-pointer items-center justify-center border-0 bg-transparent text-2xl font-light text-white/50 transition select-none hover:text-white"
                       onClick={handleDecreaseBpm10}
                     >
                       −
@@ -525,10 +553,10 @@ export default function PlaySongPage() {
                       type="number"
                       value={Math.round(currentBpm)}
                       onChange={handleBpmInputChange}
-                      className="bg-transparent text-white font-bold text-center text-lg w-14 outline-none border-0 focus:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      className="w-14 [appearance:textfield] border-0 bg-transparent text-center text-lg font-bold text-white outline-none focus:ring-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                     />
                     <button
-                      className="cursor-pointer text-white/50 hover:text-white font-light text-2xl w-8 h-8 flex items-center justify-center transition select-none bg-transparent border-0"
+                      className="flex h-8 w-8 cursor-pointer items-center justify-center border-0 bg-transparent text-2xl font-light text-white/50 transition select-none hover:text-white"
                       onClick={handleIncreaseBpm10}
                     >
                       +
@@ -537,18 +565,18 @@ export default function PlaySongPage() {
                 </div>
 
                 {/* Merged Zoom Controls */}
-                <div className="flex flex-col rounded-[20px] bg-black/45 backdrop-blur-xl shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15),0_8px_32px_0_rgba(0,0,0,0.37)] border border-white/5 overflow-hidden w-[52px] justify-between">
+                <div className="flex w-[52px] flex-col justify-between overflow-hidden rounded-[20px] border border-white/5 bg-black/45 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15),0_8px_32px_0_rgba(0,0,0,0.37)] backdrop-blur-xl">
                   <button
-                    className="cursor-pointer flex-1 p-2 text-white/70 hover:text-white transition hover:bg-white/5 flex items-center justify-center border-0 bg-transparent"
-                    onClick={() => setScaleIndex(i => Math.min(ppsScales.length - 1, i + 1))}
+                    className="flex flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white/70 transition hover:bg-white/5 hover:text-white"
+                    onClick={() => setScaleIndex((i) => Math.min(ppsScales.length - 1, i + 1))}
                     title="Zoom In"
                   >
                     <ZoomIn className="h-5 w-5" />
                   </button>
-                  <div className="h-[1px] bg-white/10 w-full" />
+                  <div className="h-[1px] w-full bg-white/10" />
                   <button
-                    className="cursor-pointer flex-1 p-2 text-white/70 hover:text-white transition hover:bg-white/5 flex items-center justify-center border-0 bg-transparent"
-                    onClick={() => setScaleIndex(i => Math.max(0, i - 1))}
+                    className="flex flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white/70 transition hover:bg-white/5 hover:text-white"
+                    onClick={() => setScaleIndex((i) => Math.max(0, i - 1))}
                     title="Zoom Out"
                   >
                     <ZoomOut className="h-5 w-5" />

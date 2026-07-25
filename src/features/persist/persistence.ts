@@ -114,8 +114,8 @@ export async function addUploadedSongs(files: File[]): Promise<string> {
   }
 
   const currentUploaded = store.get(uploadedSongsAtom)
-  const existing = currentUploaded.find(s => s.title === title)
-  
+  const existing = currentUploaded.find((s) => s.title === title)
+
   if (existing) {
     return existing.id
   }
@@ -203,7 +203,7 @@ export async function addUploadedSongs(files: File[]): Promise<string> {
   store.set(uploadedSongsAtom, newUploaded)
   idb.set('UPLOADED_SONGS', newUploaded)
 
-  // Store the FIRST file as the primary handle for consistency if needed, 
+  // Store the FIRST file as the primary handle for consistency if needed,
   // but we'll manually store the merged song in Storage.
   const currentFiles = store.get(uploadedFilesAtom)
   const newFiles = new Map(currentFiles)
@@ -222,7 +222,7 @@ export async function addUploadedSongs(files: File[]): Promise<string> {
     keySignature: parsedSongs[0].song.keySignature,
   }
   Storage.set(id, songData)
-  
+
   // Persist to IndexedDB so it's available in future sessions
   await idb.set(`SONG_DATA_${id}`, songData)
 
@@ -347,7 +347,7 @@ export async function getUploadedSong(id: string): Promise<Song | null> {
   // Check localStorage first for backwards compatibility
   const legacy = Storage.get<Song>(id)
   if (legacy) return legacy
-  
+
   // Check IndexedDB
   const song = await idb.get<Song>(`SONG_DATA_${id}`)
   return song ?? null
@@ -393,4 +393,3 @@ export function registerCustomSketch(id: string, title: string, duration: number
     idb.set('UPLOADED_SONGS', newUploaded)
   }
 }
-

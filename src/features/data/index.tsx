@@ -1,9 +1,12 @@
 import { parseMidi } from '@/features/parsers'
 import { Song, SongSource } from '@/types'
 import { base64ToBytes, peek } from '@/utils'
+import * as idb from 'idb-keyval'
 import type { SWRResponse } from 'swr'
+import { mutate } from 'swr'
 import useSWRImmutable from 'swr/immutable'
 import * as persistence from '../persist/persistence'
+import { predictSongFingerings } from '../theory/fingering'
 
 async function handleSong(response: Response): Promise<Song> {
   return response.arrayBuffer().then((buf) => parseMidi(new Uint8Array(buf)))
@@ -17,10 +20,6 @@ function getBase64Song(data: string): Song {
   const binaryMidi = base64ToBytes(data)
   return parseMidi(binaryMidi)
 }
-
-import { predictSongFingerings } from '../theory/fingering'
-import * as idb from 'idb-keyval'
-import { mutate } from 'swr'
 
 export function ensureSongFunctions(song: Song): Song {
   const sort = <T extends { time: number }>(arr: T[]): T[] => {
@@ -144,7 +143,7 @@ function triggerFingeringPrediction(id: string, source: SongSource, song: Song) 
     return
   }
 
-  (async () => {
+  ;(async () => {
     try {
       const predictedSong = await predictSongFingerings(song)
       // Save predicted song back to IndexedDB so it's cached next time (strip functions to prevent DataCloneError)
@@ -154,7 +153,7 @@ function triggerFingeringPrediction(id: string, source: SongSource, song: Song) 
         ticksToSeconds: undefined,
       }
       await idb.set(`SONG_DATA_${id}`, songToSave)
-      
+
       const songWithFunctions = ensureSongFunctions(predictedSong)
       // Quietly update SWR cache to display fingerings in the UI without a page reload
       mutate([id, source], songWithFunctions, false)
@@ -166,6 +165,7 @@ function triggerFingeringPrediction(id: string, source: SongSource, song: Song) 
 }
 
 export function useSong(id?: string, source?: SongSource): SWRResponse<Song, any, any> {
-  const shouldFetch = typeof id === 'string' && id.length > 0 && typeof source === 'string' && source.length > 0
+  const shouldFetch =
+    typeof id === 'string' && id.length > 0 && typeof source === 'string' && source.length > 0
   return useSWRImmutable(shouldFetch ? [id, source] : null, ([id, source]) => fetchSong(id, source))
 }

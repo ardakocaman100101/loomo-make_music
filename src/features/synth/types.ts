@@ -7,5 +7,6 @@ export interface Synth {
   playNote(note: number, velocity?: number): void
   stopNote(note: number, velocity?: number): void
   setMasterVolume(vol: number): void
+  setPitchBend?(semitones: number): void
   getInstrument(): InstrumentName
 }

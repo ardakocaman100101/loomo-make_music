@@ -134,7 +134,7 @@ function getRange<T>(
   }
 
   let end = start + 1
-  for (; end < array.length && !endPred(array[end]); end++) { }
+  for (; end < array.length && !endPred(array[end]); end++) {}
 
   return array.slice(start, end)
 }

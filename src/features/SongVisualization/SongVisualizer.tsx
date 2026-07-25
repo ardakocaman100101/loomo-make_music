@@ -7,6 +7,7 @@ import { usePlayer } from '../player'
 import { GivenState, render } from './canvas-renderer'
 import { waitForImages } from './images'
 import { PIXELS_PER_SECOND as pps } from './utils'
+
 type CanvasRendererProps = {
   song: Song | undefined
   config: SongConfig
@@ -82,7 +83,9 @@ function CanvasRenderer({
       className="absolute h-full w-full touch-none"
       ref={measureRef}
       onPointerMove={(e) => enableTouchscroll && touchscroll.handleMove(player, e.nativeEvent)}
-      onPointerDown={(e) => enableTouchscroll && touchscroll.handleDown(player, e.nativeEvent, canvasRect)}
+      onPointerDown={(e) =>
+        enableTouchscroll && touchscroll.handleDown(player, e.nativeEvent, canvasRect)
+      }
       onPointerUp={(e) => enableTouchscroll && touchscroll.handleUp(player, e.nativeEvent)}
     >
       <Canvas ref={canvasRef as LegacyRef<HTMLCanvasElement>} render={renderCanvas} />

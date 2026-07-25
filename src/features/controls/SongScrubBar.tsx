@@ -131,7 +131,7 @@ export default function SongScrubBar({
 
   return (
     <div
-      className="group relative flex w-full touch-none select-none h-[12px] items-center justify-center"
+      className="group relative flex h-[12px] w-full touch-none items-center justify-center select-none"
       onClick={onClick}
       ref={wrapperRef}
       onPointerMove={(e: React.MouseEvent) => {
@@ -164,48 +164,48 @@ export default function SongScrubBar({
         className={clsx(
           pointerOver ? 'flex' : 'hidden',
           'absolute z-30 min-w-max items-center justify-between gap-4',
-          '-top-2 rounded-lg bg-black/95 border border-white/10 px-3 py-1.5 text-xs text-white shadow-xl',
+          '-top-2 rounded-lg border border-white/10 bg-black/95 px-3 py-1.5 text-xs text-white shadow-xl',
           '-translate-y-full transition-all duration-150',
         )}
         ref={toolTipRef}
       >
         <span>
-          Time: <span className="text-[#6c79f0] font-mono" ref={timeSpanRef} />
+          Time: <span className="font-mono text-[#6c79f0]" ref={timeSpanRef} />
         </span>
-        <span className="w-[1px] h-3 bg-white/10" />
+        <span className="h-3 w-[1px] bg-white/10" />
         <span>
-          Measure: <span className="text-[#6c79f0] font-mono" ref={measureSpanRef} />
+          Measure: <span className="font-mono text-[#6c79f0]" ref={measureSpanRef} />
         </span>
       </div>
 
       <div
         ref={progressBarRef}
-        className="relative h-[6px] w-full bg-white/10 cursor-pointer overflow-visible rounded-full"
+        className="relative h-[6px] w-full cursor-pointer overflow-visible rounded-full bg-white/10"
       >
         {/* Played track */}
         <div
           ref={divRef}
-          className="absolute left-0 top-0 h-full bg-[#6c79f0] origin-left pointer-events-none rounded-full"
+          className="pointer-events-none absolute top-0 left-0 h-full origin-left rounded-full bg-[#6c79f0]"
           style={{ width: '100%', transform: 'scaleX(0)' }}
         />
 
         {/* Playhead handle */}
         <div
           ref={playheadRef}
-          className="absolute top-1/2 left-0 w-4.5 h-4.5 -mt-2.25 -ml-2.25 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.9)] opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"
+          className="pointer-events-none absolute top-1/2 left-0 -mt-2.25 -ml-2.25 h-4.5 w-4.5 rounded-full bg-white opacity-0 shadow-[0_0_10px_rgba(255,255,255,0.9)] transition-opacity duration-200 group-hover:opacity-100"
         />
 
         {rangeSelection && (
           <div ref={rangeRef} className="pointer-events-none absolute flex h-full items-center">
             <div className="bg-purple-dark/40 absolute h-4 w-[calc(100%-10px)]" />
             <div
-              className="bg-purple-dark/90 hover:bg-[#6c79f0] pointer-events-auto absolute left-0 h-4 w-4 -translate-x-1/2 cursor-pointer rounded-full transition"
+              className="bg-purple-dark/90 pointer-events-auto absolute left-0 h-4 w-4 -translate-x-1/2 cursor-pointer rounded-full transition hover:bg-[#6c79f0]"
               onPointerEnter={() => setPointerOver(true)}
               onPointerLeave={() => setPointerOver(false)}
               onPointerDown={() => (isDraggingL.current = true)}
             />
             <div
-              className="bg-purple-dark/90 hover:bg-[#6c79f0] pointer-events-auto absolute right-0 h-4 w-4 translate-x-1/2 cursor-pointer rounded-full transition"
+              className="bg-purple-dark/90 pointer-events-auto absolute right-0 h-4 w-4 translate-x-1/2 cursor-pointer rounded-full transition hover:bg-[#6c79f0]"
               onPointerDown={() => (isDraggingR.current = true)}
               onPointerEnter={() => setPointerOver(true)}
               onPointerLeave={() => setPointerOver(false)}

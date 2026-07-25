@@ -55,7 +55,19 @@ function getInitialScore(): Score {
     return get(perfect) + get(good)
   })
 
-  return { perfect, early, late, good, missed, miss, error, durationHeld, combined, accuracy, streak }
+  return {
+    perfect,
+    early,
+    late,
+    good,
+    missed,
+    miss,
+    error,
+    durationHeld,
+    combined,
+    accuracy,
+    streak,
+  }
 }
 
 export type PlayerState = 'CannotPlay' | 'Playing' | 'Paused'
@@ -321,7 +333,9 @@ export class Player {
   }
 
   async setTrackInstrument(track: number | string, instrument: InstrumentName) {
-    const existingVol = (this.synths[+track] as any)?.masterVolume ?? (this.trackConfigs[+track]?.sound !== false ? 1 : 0)
+    const existingVol =
+      (this.synths[+track] as any)?.masterVolume ??
+      (this.trackConfigs[+track]?.sound !== false ? 1 : 0)
     const synth = await getSynth(instrument)
     synth.setMasterVolume(existingVol)
     this.synths[+track] = synth
@@ -791,16 +805,18 @@ export class Player {
     const song = this.getSong()
     if (!song) return
 
-    const tracks = Object.keys(song.tracks).map(Number).sort((a, b) => a - b)
+    const tracks = Object.keys(song.tracks)
+      .map(Number)
+      .sort((a, b) => a - b)
     const completed = this.store.get(this.completedTracks)
 
     // Find current active track (first one not in 'completed')
-    const activeTrackId = tracks.find(id => !completed.has(id))
+    const activeTrackId = tracks.find((id) => !completed.has(id))
     if (activeTrackId === undefined) return // All completed
 
     // Track is completed if we reached the end of its notes
-    const trackNotes = song.notes.filter(n => n.track === activeTrackId)
-    const trackEnd = Math.max(...trackNotes.map(n => n.time + n.duration), 0)
+    const trackNotes = song.notes.filter((n) => n.track === activeTrackId)
+    const trackEnd = Math.max(...trackNotes.map((n) => n.time + n.duration), 0)
 
     if (currentTime >= trackEnd - 0.1) {
       const nextCompleted = new Set(completed)
@@ -808,7 +824,7 @@ export class Player {
       this.store.set(this.completedTracks, nextCompleted)
 
       // Update interactive practice to next track
-      const nextTrackId = tracks.find(id => !nextCompleted.has(id))
+      const nextTrackId = tracks.find((id) => !nextCompleted.has(id))
       if (nextTrackId !== undefined) {
         this.setupProgressiveRegion_(nextTrackId)
       }
@@ -822,18 +838,20 @@ export class Player {
     const completed = this.store.get(this.completedTracks)
 
     // Set practice only for the active track
-    Object.keys(song.tracks).forEach(idStr => {
+    Object.keys(song.tracks).forEach((idStr) => {
       const id = Number(idStr)
       if (this.trackConfigs[id]) {
-        this.trackConfigs[id].practice = (id === activeTrackId)
-        this.trackConfigs[id].sound = completed.has(id) || (id === activeTrackId)
+        this.trackConfigs[id].practice = id === activeTrackId
+        this.trackConfigs[id].sound = completed.has(id) || id === activeTrackId
       }
     })
 
     // Loop range should cover from beginning of first track to end of active track
-    const allRelevantNotes = song.notes.filter(n => completed.has(n.track) || n.track === activeTrackId)
-    const start = Math.min(...allRelevantNotes.map(n => n.time), 0)
-    const end = Math.max(...allRelevantNotes.map(n => n.time + n.duration), song.duration)
+    const allRelevantNotes = song.notes.filter(
+      (n) => completed.has(n.track) || n.track === activeTrackId,
+    )
+    const start = Math.min(...allRelevantNotes.map((n) => n.time), 0)
+    const end = Math.max(...allRelevantNotes.map((n) => n.time + n.duration), song.duration)
 
     this.setRange({ start, end })
     this.seek(start)

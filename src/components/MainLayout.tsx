@@ -1,6 +1,6 @@
-import { MarketingFooter } from './MarketingFooter'
-import AppBar from './AppBar'
 import { Outlet, useLocation } from 'react-router'
+import AppBar from './AppBar'
+import { MarketingFooter } from './MarketingFooter'
 
 export default function MainLayout() {
   const location = useLocation()

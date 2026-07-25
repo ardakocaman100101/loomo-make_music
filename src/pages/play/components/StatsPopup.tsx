@@ -16,9 +16,9 @@ export function StatsPopup({}) {
     <MovablePopup
       initialPosition={{ x: '100%', y: 90 }}
       header={
-        <div className="flex h-[50px] w-full cursor-grab items-center justify-center relative">
-          <div className="flex items-baseline gap-2.5 select-none z-10">
-            <span className="text-[17px] font-black uppercase tracking-[0.18em] text-[#6c79f0]">
+        <div className="relative flex h-[50px] w-full cursor-grab items-center justify-center">
+          <div className="z-10 flex items-baseline gap-2.5 select-none">
+            <span className="text-[17px] font-black tracking-[0.18em] text-[#6c79f0] uppercase">
               Score
             </span>
             <span className="text-[20px] font-black text-white">{accuracy}%</span>
@@ -26,28 +26,36 @@ export function StatsPopup({}) {
         </div>
       }
     >
-      <div className="flex flex-col w-full gap-1.5 p-0.5">
+      <div className="flex w-full flex-col gap-1.5 p-0.5">
         {/* Row 1: Early (Yellow) & Perfect (Green) */}
         <div className="grid grid-cols-2 gap-1.5">
-          <div className="flex flex-col items-center rounded-xl bg-white/5 border border-white/5 py-1.5 px-2 min-w-0">
-            <span className="text-[9px] font-bold text-yellow-400/90 tracking-wider text-center select-none">EARLY</span>
-            <span className="text-xl font-bold text-yellow-400 mt-1 leading-none">{early}</span>
+          <div className="flex min-w-0 flex-col items-center rounded-xl border border-white/5 bg-white/5 px-2 py-1.5">
+            <span className="text-center text-[9px] font-bold tracking-wider text-yellow-400/90 select-none">
+              EARLY
+            </span>
+            <span className="mt-1 text-xl leading-none font-bold text-yellow-400">{early}</span>
           </div>
-          <div className="flex flex-col items-center rounded-xl bg-white/5 border border-white/5 py-1.5 px-2 min-w-0">
-            <span className="text-[9px] font-bold text-green-400/90 tracking-wider text-center select-none">PERFECT</span>
-            <span className="text-xl font-bold text-green-400 mt-1 leading-none">{perfect}</span>
+          <div className="flex min-w-0 flex-col items-center rounded-xl border border-white/5 bg-white/5 px-2 py-1.5">
+            <span className="text-center text-[9px] font-bold tracking-wider text-green-400/90 select-none">
+              PERFECT
+            </span>
+            <span className="mt-1 text-xl leading-none font-bold text-green-400">{perfect}</span>
           </div>
         </div>
 
         {/* Row 2: Late (Blue) & Miss (Red) */}
         <div className="grid grid-cols-2 gap-1.5">
-          <div className="flex flex-col items-center rounded-xl bg-white/5 border border-white/5 py-1.5 px-2 min-w-0">
-            <span className="text-[9px] font-bold text-purple-400/90 tracking-wider text-center select-none">LATE</span>
-            <span className="text-xl font-bold text-purple-400 mt-1 leading-none">{late}</span>
+          <div className="flex min-w-0 flex-col items-center rounded-xl border border-white/5 bg-white/5 px-2 py-1.5">
+            <span className="text-center text-[9px] font-bold tracking-wider text-purple-400/90 select-none">
+              LATE
+            </span>
+            <span className="mt-1 text-xl leading-none font-bold text-purple-400">{late}</span>
           </div>
-          <div className="flex flex-col items-center rounded-xl bg-white/5 border border-white/5 py-1.5 px-2 min-w-0">
-            <span className="text-[9px] font-bold text-red-500/90 tracking-wider text-center select-none">MISS</span>
-            <span className="text-xl font-bold text-red-500 mt-1 leading-none">{miss}</span>
+          <div className="flex min-w-0 flex-col items-center rounded-xl border border-white/5 bg-white/5 px-2 py-1.5">
+            <span className="text-center text-[9px] font-bold tracking-wider text-red-500/90 select-none">
+              MISS
+            </span>
+            <span className="mt-1 text-xl leading-none font-bold text-red-500">{miss}</span>
           </div>
         </div>
       </div>
