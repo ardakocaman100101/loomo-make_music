@@ -89,7 +89,6 @@ function isPlayingNote(state: State, note: SongNote) {
 }
 
 function getViewport(state: Readonly<GivenState>): Viewport {
-  // Time is on Y-axis (vertical) for falling notes.
   return {
     start: state.time * state.pps,
     end: state.time * state.pps + state.height,
@@ -121,9 +120,16 @@ function deriveState(state: GivenState): State {
       midiState.midiOctaveDiff = 0
     }
   } else {
-    const notes: SongNote[] = items
-      ? (items.filter((i) => i.type === 'note') as SongNote[])
-      : ([{ midiNote: 21 }, { midiNote: 108 }] as SongNote[])
+    const matchingNotes: SongNote[] = items
+      ? (items.filter((i) => i.type === 'note' && isMatchingHand(i, state)) as SongNote[])
+      : []
+
+    const notesForRange =
+      matchingNotes.length > 0
+        ? matchingNotes
+        : items
+          ? (items.filter((i) => i.type === 'note') as SongNote[])
+          : ([{ midiNote: 21 }, { midiNote: 108 }] as SongNote[])
 
     let minNotes = state.zoomMode ?? 0
     if (state.zoomMode === undefined && state.height > state.windowWidth) {
@@ -133,7 +139,10 @@ function deriveState(state: GivenState): State {
       else minNotes = 24
     }
 
-    const { startNote: songStart, endNote: songEnd } = getSongRange({ notes }, minNotes)
+    const { startNote: songStart, endNote: songEnd } = getSongRange(
+      { notes: notesForRange },
+      minNotes,
+    )
     const instrumentRange = midiState.detectedRange
     const range = getKeyboardRange(songStart, songEnd, instrumentRange)
     startNote = range.startNote
@@ -146,10 +155,7 @@ function deriveState(state: GivenState): State {
 
   const averageLaneWidth = state.windowWidth / Math.max(endNote - startNote, 1)
   const averageCircleRadius = averageLaneWidth / 2 - 1
-  // Perfect tolerance inside the circle, exactly matching the radius in terms of MS
-  // Multiplied by 2.5 to make it more forgiving and easier to get green.
   const perfectRangeMs = (averageCircleRadius / state.pps) * 1000 * 1.5
-  // Yellow/blue boundary (e.g. 4 times the circle radius)
   const goodRangeMs = perfectRangeMs * 4
   state.player.setTolerance(perfectRangeMs, goodRangeMs)
 
@@ -190,10 +196,8 @@ export function getKeyboardRange(
     }
   }
 
-  // Shift incoming hardware MIDI notes by k octaves so the user can play the song
   midiState.midiOctaveDiff = k
 
-  // Determine bounds by taking the union of the song's range and the shifted instrument's range
   let displayStart = songStart
   let displayEnd = songEnd
 
@@ -202,16 +206,13 @@ export function getKeyboardRange(
     displayEnd = Math.max(songEnd, instrumentRange.end + k * 12)
   }
 
-  // Snap to the nearest C octaves (multiples of 12)
   let start = Math.floor(displayStart / 12) * 12
   let end = Math.ceil(displayEnd / 12) * 12
 
-  // Ensure minimum of 1 octave (13 keys, e.g. C to C)
   if (end - start < 12) {
     end = start + 12
   }
 
-  // Constrain to valid piano MIDI range (A0 = 21, C8 = 108)
   start = Math.max(21, start)
   end = Math.min(108, end)
 
@@ -230,13 +231,7 @@ function getFallingNoteItemsInView<T>(state: State): CanvasItem[] {
       return isStarted && isVisible
     })
   }
-  // Items are sorted by ascending time.
-  // Earliest items (small time) have the largest Y (below screen),
-  // latest items (large time) have the smallest Y (above screen).
-  // startPred: start collecting when the top of the note enters the bottom of the screen
   let startPred = (item: CanvasItem) => getItemStartEnd(item, state).end <= state.height
-  // endPred: stop collecting when the bottom of the note is completely above the screen
-  // In 3D mode with beta=3.0, notes remain visible further up the screen.
   let endPred = (item: CanvasItem) => getItemStartEnd(item, state).start < -state.height * 2.5
   return getItemsInView(state, startPred, endPred)
 }
@@ -247,8 +242,9 @@ function projectPoint(x: number, y: number, state: State): { x: number; y: numbe
   if (d <= 0) {
     return { x, y, scale: 1 }
   }
-  const beta = 3.0
-  const scale = anchorY / (anchorY + d / beta)
+  const beta = 1.6
+  const rawScale = anchorY / (anchorY + d / beta)
+  const scale = Math.max(0.25, rawScale)
   const centerX = state.windowWidth / 2
   const px = centerX + (x - centerX) * scale
   const py = anchorY - d * scale
@@ -257,20 +253,18 @@ function projectPoint(x: number, y: number, state: State): { x: number; y: numbe
 
 export function renderFallingVis(givenState: GivenState): void {
   const state: State = deriveState(givenState)
-  // Deep charcoal radial gradient fading to pure black
   const cx = state.windowWidth / 2
   const cy = state.height / 2
   const radius = Math.max(state.windowWidth, state.height)
 
   const bgGrad = state.ctx.createRadialGradient(cx, cy, 0, cx, cy, radius)
-  bgGrad.addColorStop(0, '#242424') // Lighter charcoal center
-  bgGrad.addColorStop(0.7, '#0a0a0a') // Deep black mid
-  bgGrad.addColorStop(1, '#000000') // Pure black edges
+  bgGrad.addColorStop(0, '#242424')
+  bgGrad.addColorStop(0.7, '#0a0a0a')
+  bgGrad.addColorStop(1, '#000000')
 
   state.ctx.fillStyle = bgGrad
   state.ctx.fillRect(0, 0, state.windowWidth, state.height)
 
-  // Apply subtle matte noise texture overlay
   const pattern = getNoisePattern(state.ctx)
   if (pattern) {
     state.ctx.fillStyle = pattern
@@ -288,7 +282,6 @@ export function renderFallingVis(givenState: GivenState): void {
     }
   }
 
-  // Pre-calculate active targets for feedback coloring
   const activeTargets = new Set<SongNote>()
   const now = state.time
   const margin = state.player.goodRange / 1000
@@ -314,6 +307,8 @@ export function renderFallingVis(givenState: GivenState): void {
   if (state.selectedRange) {
     renderRange(state)
   }
+
+  renderHorizonFade(state)
 
   const activeFingerings = new Map<number, number>()
   const perfectRangeMs = (Math.min(40 / 2, 250 / 2) / state.pps) * 1000 * 1.5
@@ -344,18 +339,33 @@ export function renderFallingVis(givenState: GivenState): void {
   )
 }
 
+function renderHorizonFade(state: State) {
+  const { ctx, windowWidth, pianoTopY } = state
+  ctx.save()
+
+  // Tighter horizon fade: reduced by 20% vertical height to maximize visible play area
+  const fadeHeight = Math.max(96, pianoTopY * 0.36)
+  const grad = ctx.createLinearGradient(0, 0, 0, fadeHeight)
+  grad.addColorStop(0, '#000000')
+  grad.addColorStop(0.35, 'rgba(10, 10, 14, 0.92)')
+  grad.addColorStop(0.7, 'rgba(10, 10, 14, 0.45)')
+  grad.addColorStop(1.0, 'rgba(10, 10, 14, 0)')
+
+  ctx.fillStyle = grad
+  ctx.fillRect(0, 0, windowWidth, fadeHeight)
+  ctx.restore()
+}
+
 function renderHitLine(state: State) {
   const { ctx, noteHitY, windowWidth } = state
   ctx.save()
 
-  // Linear gradient that only fades out at the outer 5% of the screen
   const grad = ctx.createLinearGradient(0, 0, windowWidth, 0)
   grad.addColorStop(0, 'rgba(255, 220, 180, 0)')
   grad.addColorStop(0.05, 'rgba(255, 220, 180, 0.9)')
   grad.addColorStop(0.95, 'rgba(255, 220, 180, 0.9)')
   grad.addColorStop(1, 'rgba(255, 220, 180, 0)')
 
-  // 1. Draw base semi-transparent white-orange dashed playhead (4.8px thickness)
   ctx.beginPath()
   ctx.setLineDash([12, 4])
   ctx.strokeStyle = grad
@@ -369,13 +379,15 @@ function renderHitLine(state: State) {
 }
 
 function getNoteFeedbackColor(state: State, note: SongNote): string | undefined {
-  if (state.player.missedNotes.has(note)) {
-    return feedbackColors.red
-  }
   if (note.feedbackColor) {
     return feedbackColors[note.feedbackColor] ?? note.feedbackColor
   }
-  // Fallback to active press feedback if not saved yet
+  if (state.player.hitNotes.has(note)) {
+    return feedbackColors.green
+  }
+  if (state.player.missedNotes.has(note)) {
+    return feedbackColors.red
+  }
   const feedback = state.player.pressFeedback.get(note.midiNote)
   if (feedback) {
     return feedbackColors[feedback] ?? feedback
@@ -392,35 +404,6 @@ function getNoteDefaultColor(state: State, note: SongNote): string {
   } else {
     return colors.left[keyType]
   }
-}
-
-function getNoteColor(state: State, note: SongNote, isActiveTarget: boolean): string {
-  if (state.player.missedNotes.has(note)) {
-    return feedbackColors.red
-  }
-
-  const isPressed = midiState.getPressedNotes().has(note.midiNote)
-  const feedback = state.player.pressFeedback.get(note.midiNote)
-
-  if (isPressed && feedback && isActiveTarget) {
-    // Only apply feedback color if the note is currently near or on the baseline.
-    const now = state.time
-    const margin = state.player.goodRange / 1000 // convert ms to seconds
-    if (now >= note.time - margin && now <= note.time + note.duration + margin) {
-      return feedbackColors[feedback] ?? feedback
-    }
-  }
-
-  const hand = state.hands[note.track]?.hand ?? 'both'
-  const keyType = isBlack(note.midiNote) ? 'black' : 'white'
-
-  let color
-  if (hand === 'both' || hand === 'right') {
-    color = colors.right[keyType]
-  } else {
-    color = colors.left[keyType]
-  }
-  return color
 }
 
 function renderRange(state: State) {
@@ -440,7 +423,6 @@ function renderRange(state: State) {
   const posY = canvasY
   const tailTopY = canvasY - rectHeight
 
-  // Project the 4 corners of the full-width range selection block
   const bottomLeft = projectPoint(0, posY, state)
   const bottomRight = projectPoint(state.windowWidth, posY, state)
   const topRight = projectPoint(state.windowWidth, tailTopY, state)
@@ -475,7 +457,6 @@ function renderLanes(state: State) {
       ctx.fillStyle = 'rgba(255, 255, 255, 0.03)'
 
       ctx.beginPath()
-      // Left boundary of the lane going down
       const pStart = projectPoint(lane.left, yStart, state)
       ctx.moveTo(pStart.x, pStart.y)
       for (let j = 1; j <= segments; j++) {
@@ -484,7 +465,6 @@ function renderLanes(state: State) {
         ctx.lineTo(p.x, p.y)
       }
 
-      // Right boundary of the lane going up
       for (let j = segments; j >= 0; j--) {
         const y = yStart + j * yStep
         const p = projectPoint(lane.left + lane.width, y, state)
@@ -509,7 +489,6 @@ export function renderFallingNote(
 
   const { ctx, pps, noteLabels, pianoTopY, pianoMeasurements } = state
   const lane = state.pianoMeasurements.lanes[note.midiNote]
-  const keyTop = pianoTopY
   const keyHeight = isBlack(note.midiNote)
     ? pianoMeasurements.blackHeight
     : pianoMeasurements.whiteHeight
@@ -540,12 +519,9 @@ export function renderFallingNote(
   posX = Math.floor(posX + 1)
   const width = Math.max(noteWidth - 2, 8)
   const posY = getItemStartEnd(note, state).start
+  const endY = getItemStartEnd(note, state).end
 
-  const actualLength = note.duration * pps
   const circleRadius = Math.min(width / 2, keyHeight / 2)
-  const minLengthToDisplayCircle = Math.max(circleRadius * 2, 18)
-  const length = Math.max(actualLength, minLengthToDisplayCircle)
-
   const defaultColor = getNoteDefaultColor(state, note)
   const feedbackColor = getNoteFeedbackColor(state, note)
 
@@ -563,7 +539,7 @@ export function renderFallingNote(
     if (hexOrName.startsWith('rgb')) {
       return hexOrName.replace('rgb', 'rgba').replace(')', `, ${alpha})`)
     }
-    const colors: Record<string, string> = {
+    const colorsMap: Record<string, string> = {
       purple: '176, 142, 255',
       orange: '243, 156, 18',
       green: '46, 204, 113',
@@ -572,7 +548,7 @@ export function renderFallingNote(
       yellow: '241, 196, 15',
       grey: '149, 165, 166',
     }
-    const rgb = colors[hexOrName.toLowerCase()]
+    const rgb = colorsMap[hexOrName.toLowerCase()]
     if (rgb) {
       return `rgba(${rgb}, ${alpha})`
     }
@@ -584,26 +560,14 @@ export function renderFallingNote(
   const circleCenterX = posX + width / 2
   const circleCenterY = posY - circleRadius
 
-  const isPerfectCircle = actualLength <= minLengthToDisplayCircle
-  const tailTopY = isPerfectCircle ? circleCenterY - circleRadius : posY - length
+  const drawnTopY = endY
+  const r = circleRadius * 0.4
 
-  let overflowPixels = 0
-  if (note.userPressStart !== undefined && feedbackColor !== undefined) {
-    const pressEnd = note.userPressEnd ?? state.time
-    if (!isNaN(note.userPressStart) && !isNaN(pressEnd)) {
-      overflowPixels = Math.max(0, (pressEnd - (note.time + note.duration)) * state.pps)
-    }
-  }
-  const drawnTopY = tailTopY - overflowPixels
-  const r = isPerfectCircle ? circleRadius : circleRadius * 0.4
-
+  // Build rounded trapezoid perimeter path strictly aligned to lane geometry in projected space
   const localPoints: { x: number; y: number }[] = []
-
-  // Segment long sides into smaller intervals so 3D perspective curves non-linearly without bowing
   const topCornerY = drawnTopY + r
   const sideSegments = Math.max(1, Math.ceil(Math.abs(circleCenterY - topCornerY) / 25))
 
-  // 1. Bottom half-circle (going from right angle 0 to left angle PI)
   const numCirclePoints = 16
   for (let j = 0; j <= numCirclePoints; j++) {
     const angle = (j / numCirclePoints) * Math.PI
@@ -612,7 +576,6 @@ export function renderFallingNote(
     localPoints.push({ x, y })
   }
 
-  // 1b. Left vertical side (going UP from circleCenterY to topCornerY)
   for (let s = 1; s < sideSegments; s++) {
     const t = s / sideSegments
     const x = circleCenterX - circleRadius
@@ -620,7 +583,6 @@ export function renderFallingNote(
     localPoints.push({ x, y })
   }
 
-  // 2. Left-top rounded corner (from angle PI to 1.5 * PI)
   const numCornerPoints = 6
   for (let j = 0; j <= numCornerPoints; j++) {
     const angle = Math.PI + (j / numCornerPoints) * (Math.PI / 2)
@@ -629,7 +591,6 @@ export function renderFallingNote(
     localPoints.push({ x, y })
   }
 
-  // 3. Right-top rounded corner (from angle 1.5 * PI to 2 * PI)
   for (let j = 0; j <= numCornerPoints; j++) {
     const angle = 1.5 * Math.PI + (j / numCornerPoints) * (Math.PI / 2)
     const x = circleCenterX + circleRadius - r + r * Math.cos(angle)
@@ -637,7 +598,6 @@ export function renderFallingNote(
     localPoints.push({ x, y })
   }
 
-  // 3b. Right vertical side (going DOWN from topCornerY to circleCenterY)
   for (let s = 1; s < sideSegments; s++) {
     const t = s / sideSegments
     const x = circleCenterX + circleRadius
@@ -646,7 +606,29 @@ export function renderFallingNote(
   }
 
   const projectedPoints = localPoints.map((pt) => projectPoint(pt.x, pt.y, state))
+  const pBottomCenter = projectPoint(circleCenterX, posY, state)
+  const pTopCenter = projectPoint(circleCenterX, drawnTopY, state)
+  const pCenter = projectPoint(circleCenterX, circleCenterY, state)
 
+  // --- 1. Tactile 3D Extrusion Layer (Matching Rounded Perimeter) ---
+  const depthZ = Math.max(2.5, 5.0 * pBottomCenter.scale)
+  const shadowColor = getRgbaColor(defaultColor, 0.35)
+
+  const numBottomPts = numCirclePoints + 1
+  ctx.beginPath()
+  ctx.moveTo(projectedPoints[0].x, projectedPoints[0].y)
+  for (let j = 1; j < numBottomPts; j++) {
+    ctx.lineTo(projectedPoints[j].x, projectedPoints[j].y)
+  }
+  for (let j = numBottomPts - 1; j >= 0; j--) {
+    ctx.lineTo(projectedPoints[j].x, projectedPoints[j].y + depthZ)
+  }
+  ctx.closePath()
+
+  ctx.fillStyle = shadowColor
+  ctx.fill()
+
+  // --- 2. Vibrant Front Tile Face ---
   ctx.beginPath()
   ctx.moveTo(projectedPoints[0].x, projectedPoints[0].y)
   for (let j = 1; j < projectedPoints.length; j++) {
@@ -654,77 +636,80 @@ export function renderFallingNote(
   }
   ctx.closePath()
 
-  const bottomPt = projectPoint(circleCenterX, posY, state)
-  const topPt = projectPoint(circleCenterX, drawnTopY, state)
+  let activeFeedbackColor = getNoteFeedbackColor(state, note)
+  const isPressed = midiState.getPressedNotes().has(note.midiNote)
+  const liveFeedback = state.player.pressFeedback.get(note.midiNote)
+
+  if (isPressed && liveFeedback && (isActiveTarget || state.time >= note.time - 0.2)) {
+    activeFeedbackColor = feedbackColors[liveFeedback] ?? liveFeedback
+  }
 
   let startRatio = 0
   let endRatio = 0
-  if (note.userPressStart !== undefined && feedbackColor !== undefined) {
-    const pressEnd = note.userPressEnd ?? state.time
-    if (note.duration > 0 && !isNaN(note.userPressStart) && !isNaN(pressEnd)) {
-      const origStartRatio = Math.min(
-        1,
-        Math.max(0, (note.userPressStart - note.time) / note.duration),
-      )
-      const origEndRatio = Math.min(1, Math.max(0, (pressEnd - note.time) / note.duration))
-      const extendedLength = length + overflowPixels
-      startRatio = (origStartRatio * length) / extendedLength
-      endRatio = overflowPixels > 0 ? 1.0 : (origEndRatio * length) / extendedLength
-    } else {
+  let isFilled = false
+
+  if (activeFeedbackColor) {
+    const dur = note.duration > 0 ? note.duration : 0.001
+
+    if (note.userPressStart !== undefined) {
+      // User pressed this note: fill from userPressStart (playhead t=0) to userPressEnd or current progress
+      const pressStartSec = note.userPressStart
+      const pressEndSec = note.userPressEnd ?? (isPressed ? state.time : note.time + note.duration)
+      startRatio = Math.min(1, Math.max(0, (pressStartSec - note.time) / dur))
+      endRatio = Math.min(1, Math.max(0.05, (pressEndSec - note.time) / dur))
+      isFilled = true
+    } else if (isPressed && state.time >= note.time - 0.05) {
+      // Live key press active: fills progressively from playhead (bottom edge, ratio=0) upward
+      startRatio = 0
+      endRatio = Math.min(1, Math.max(0.05, (state.time - note.time) / dur))
+      isFilled = true
+    } else if (state.player.hitNotes.has(note) || note.feedbackColor) {
+      // Struck hit note: fully filled with hit feedback color
       startRatio = 0
       endRatio = 1
+      isFilled = true
+    } else if (state.player.missedNotes.has(note)) {
+      // Missed note: full red tile
+      startRatio = 0
+      endRatio = 1
+      isFilled = true
     }
   }
 
   let grad: CanvasGradient | string = defaultColor
   try {
-    const g = ctx.createLinearGradient(circleCenterX, bottomPt.y, circleCenterX, topPt.y)
-    if (startRatio < endRatio && feedbackColor) {
-      // Bottom segment of the note (before it was pressed) remains default color
-      if (startRatio > 0) {
+    const g = ctx.createLinearGradient(circleCenterX, pBottomCenter.y, circleCenterX, pTopCenter.y)
+    if (isFilled && activeFeedbackColor && endRatio > startRatio) {
+      if (startRatio > 0.01) {
         g.addColorStop(0, getRgbaColor(defaultColor, 1.0))
         g.addColorStop(startRatio, getRgbaColor(defaultColor, 0.9))
       }
+      const startColorStop = startRatio > 0.01 ? startRatio : 0
+      g.addColorStop(startColorStop, getRgbaColor(activeFeedbackColor, 1.0))
+      g.addColorStop(endRatio, getRgbaColor(activeFeedbackColor, 0.9))
 
-      // Pressed segment is colored with the feedback color
-      const startColorStop = startRatio > 0 ? startRatio : 0
-      g.addColorStop(startColorStop, getRgbaColor(feedbackColor, 1.0))
-      g.addColorStop(endRatio, getRgbaColor(feedbackColor, 0.9))
-
-      // Top segment of the note (after it was released) remains default color
-      if (endRatio < 1) {
+      if (endRatio < 0.99) {
         g.addColorStop(endRatio, getRgbaColor(defaultColor, 0.9))
-        g.addColorStop(1, getRgbaColor(defaultColor, 0.8))
+        g.addColorStop(1.0, getRgbaColor(defaultColor, 0.8))
       }
     } else {
-      if (feedbackColor === feedbackColors.red && feedbackColor) {
-        g.addColorStop(0, getRgbaColor(feedbackColor, 1.0))
-        g.addColorStop(1, getRgbaColor(feedbackColor, 0.8))
-      } else {
-        g.addColorStop(0, getRgbaColor(defaultColor, 1.0))
-        g.addColorStop(1, getRgbaColor(defaultColor, 0.8))
-      }
+      g.addColorStop(0, getRgbaColor(defaultColor, 1.0))
+      g.addColorStop(1, getRgbaColor(defaultColor, 0.8))
     }
     grad = g
   } catch (e) {
-    console.warn(
-      'Failed to create linear gradient for note rendering, falling back to solid color:',
-      e,
-    )
+    console.warn('Failed to create linear gradient for note rendering:', e)
     grad = defaultColor
   }
 
   ctx.fillStyle = grad
   ctx.fill()
 
-  const center = projectPoint(circleCenterX, circleCenterY, state)
-  const radiusScaled = circleRadius * center.scale
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)'
+  ctx.lineWidth = Math.max(1, 1.4 * pBottomCenter.scale)
+  ctx.stroke()
 
-  const perfectRangeMs = (Math.min(40 / 2, 250 / 2) / state.pps) * 1000 * 1.5
-  const perfectRangeSec = perfectRangeMs / 1000
-  const isFingeringActive =
-    state.time >= note.time - perfectRangeSec && state.time <= note.time + note.duration
-
+  // --- 3. Note Label ---
   const key = getKey(note.midiNote, state.keySignature)
   const labelType = noteLabels === 'none' ? 'alphabetical' : noteLabels
   const noteText = labelType === 'alphabetical' ? key : getFixedDoNoteFromKey(key)
@@ -734,7 +719,7 @@ export function renderFallingNote(
     ctx.textBaseline = 'middle'
     ctx.textAlign = 'center'
     const padding = 2
-    const maxWidth = (circleRadius * 2 - padding * 2) * center.scale
+    const maxWidth = (circleRadius * 2 - padding * 2) * pCenter.scale
     let { fontPx } = getOptimalFontSize(ctx, noteText, TEXT_FONT, maxWidth)
     fontPx = Math.min(fontPx, maxWidth * 0.8)
 
@@ -750,16 +735,16 @@ export function renderFallingNote(
       const sharpW = ctx.measureText('#').width
 
       const totalW = letterW + sharpW
-      const startX = center.x - totalW / 2
+      const startX = pCenter.x - totalW / 2
 
       ctx.font = `bold ${letterSize}px ui-sans-serif, system-ui, sans-serif`
-      ctx.fillText(letter, startX + letterW / 2, center.y + letterSize * 0.05)
+      ctx.fillText(letter, startX + letterW / 2, pCenter.y + letterSize * 0.05)
 
       ctx.font = `bold ${sharpSize}px ui-sans-serif, system-ui, sans-serif`
-      ctx.fillText('#', startX + letterW + sharpW / 2, center.y - letterSize * 0.12)
+      ctx.fillText('#', startX + letterW + sharpW / 2, pCenter.y - letterSize * 0.12)
     } else {
       ctx.font = `bold ${fontPx}px ui-sans-serif, system-ui, sans-serif`
-      ctx.fillText(noteText, center.x, center.y + fontPx * 0.05)
+      ctx.fillText(noteText, pCenter.x, pCenter.y + fontPx * 0.05)
     }
   }
   ctx.restore()
@@ -770,7 +755,6 @@ function renderMeasure(measure: SongMeasure, state: State): void {
   ctx.save()
   const posY = getItemStartEnd(measure, state).start
 
-  // Project the text anchor position (left side of screen)
   const pt = projectPoint(8, posY, state)
 
   ctx.strokeStyle = 'rgba(130,130,130, 0.4)'
@@ -786,7 +770,6 @@ function getItemStartEnd(item: CanvasItem, state: State): { start: number; end: 
     const bottomY = state.noteHitY - (state.time - (item.time + item.duration)) * state.pps
     return { start: bottomY, end: topY }
   }
-  // Times are already in seconds from MIDI parser (tone.js), pps is pixels/second
   const noteScreenY = state.noteHitY - (item.time - state.time) * state.pps
   const endY = noteScreenY - item.duration * state.pps
   return { start: noteScreenY, end: endY }

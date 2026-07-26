@@ -251,14 +251,22 @@ export default function PlaySongPage() {
         Object.keys(updatedTracks).forEach((trackIdStr) => {
           const trackId = Number(trackIdStr)
           const isTarget = trackId === practiceTrackId
+          const existingHand = updatedTracks[trackId]?.hand
           updatedTracks[trackId] = {
             ...updatedTracks[trackId],
             practice: isTarget,
             sound: isTarget,
+            hand: isTarget
+              ? existingHand && existingHand !== 'none'
+                ? existingHand
+                : 'right'
+              : 'none',
           }
         })
         config = {
           ...config,
+          left: true,
+          right: true,
           tracks: updatedTracks,
         }
       }

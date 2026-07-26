@@ -140,6 +140,9 @@ export class Player {
     let missedNotes = 0
     for (const [midiNote, list] of this.lateNotes.entries()) {
       const remaining = list.filter((missedNote) => {
+        if (this.hitNotes.has(missedNote) || missedNote.feedbackColor !== undefined) {
+          return false
+        }
         const diff = this.calcDiff(this.currentSongTime, missedNote.time)
         if (diff > this.goodRange) {
           missedNotes++
@@ -174,7 +177,6 @@ export class Player {
     if (midiEvent.type === 'up') {
       this.midiPressedNotes.delete(midiNote)
       this.pressFeedback.delete(midiNote)
-      // Find the active hit note that is currently being pressed and record the end time
       for (const note of this.hitNotes) {
         if (
           note.midiNote === midiNote &&
@@ -186,6 +188,9 @@ export class Player {
       }
       return
     } else {
+      if (this.midiPressedNotes.has(midiNote)) {
+        return
+      }
       this.midiPressedNotes.add(midiNote)
     }
 
@@ -197,46 +202,65 @@ export class Player {
   }
 
   processScoreData(midiNote: number) {
-    // First check if the note already passed.
     this.clearMissedNotes_()
+    const currentTime = this.currentSongTime
+
+    // 1. Check if the note is in lateNotes
     const list = this.lateNotes.get(midiNote)
     if (list && list.length > 0) {
-      const lateNote = list[0]
-      const currentTime = this.currentSongTime
-      const diff = this.calcDiff(currentTime, lateNote.time)
-      const isHit = diff < this.goodRange
-      if (isHit) {
-        list.shift()
-        if (list.length === 0) {
-          this.lateNotes.delete(midiNote)
-        } else {
-          this.lateNotes.set(midiNote, list)
+      const lateNote = list.find((n) => !this.hitNotes.has(n) && n.feedbackColor === undefined)
+      if (lateNote) {
+        const diff = Math.abs(this.calcDiff(currentTime, lateNote.time))
+        if (diff <= this.goodRange) {
+          const remaining = list.filter((n) => n !== lateNote)
+          if (remaining.length === 0) {
+            this.lateNotes.delete(midiNote)
+          } else {
+            this.lateNotes.set(midiNote, remaining)
+          }
+
+          if (diff <= this.perfectRange) {
+            this.store.set(this.score.perfect, increment)
+            this.pressFeedback.set(midiNote, 'green')
+            lateNote.feedbackColor = 'green'
+          } else {
+            this.store.set(this.score.late, increment)
+            this.pressFeedback.set(midiNote, 'purple')
+            lateNote.feedbackColor = 'purple'
+          }
+          this.store.set(this.score.streak, increment)
+          lateNote.userPressStart = currentTime
+          this.hitNotes.add(lateNote)
+          this.missedNotes.delete(lateNote)
+          if (this.skipMissedNotes) {
+            this.playNote(lateNote)
+          }
+          return
         }
-        if (diff < this.perfectRange) {
-          this.store.set(this.score.perfect, increment)
-          this.pressFeedback.set(midiNote, 'green')
-          lateNote.feedbackColor = 'green'
-        } else {
-          this.store.set(this.score.late, increment)
-          this.pressFeedback.set(midiNote, 'purple')
-          lateNote.feedbackColor = 'purple'
-        }
-        this.store.set(this.score.streak, increment)
-        lateNote.userPressStart = currentTime
-        this.hitNotes.add(lateNote)
-        if (this.skipMissedNotes) {
-          this.playNote(lateNote)
-        }
-        return
       }
     }
 
-    // Now handle if the note is upcoming, aka it was hit early
-    const nextNote = this.getUpcomingNotes()?.find((note) => note.midiNote === midiNote)
-    if (nextNote && !isHitNote(this, nextNote)) {
-      const diff = this.calcDiff(nextNote.time, this.currentSongTime)
-      if (diff < this.goodRange) {
-        if (diff < this.perfectRange) {
+    // 2. Check upcoming notes on active practice tracks
+    const song = this.getSong()
+    if (song && song.notes) {
+      const maxMarginSec = ((this.goodRange * 1.5) / 1000) * this.store.get(this.bpmModifier)
+
+      const nextNote = song.notes.find((n) => {
+        if (
+          n.midiNote !== midiNote ||
+          !this.isActiveHand(n) ||
+          this.hitNotes.has(n) ||
+          n.feedbackColor !== undefined
+        ) {
+          return false
+        }
+        const diffMs = Math.abs(this.calcDiff(n.time, currentTime))
+        return diffMs <= this.goodRange && n.time >= currentTime - maxMarginSec
+      })
+
+      if (nextNote) {
+        const diff = Math.abs(this.calcDiff(nextNote.time, currentTime))
+        if (diff <= this.perfectRange) {
           this.store.set(this.score.perfect, increment)
           this.pressFeedback.set(midiNote, 'green')
           nextNote.feedbackColor = 'green'
@@ -247,8 +271,9 @@ export class Player {
         }
 
         this.store.set(this.score.streak, increment)
-        nextNote.userPressStart = this.currentSongTime
+        nextNote.userPressStart = currentTime
         this.hitNotes.add(nextNote)
+        this.missedNotes.delete(nextNote)
         return
       }
     }

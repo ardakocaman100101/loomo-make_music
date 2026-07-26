@@ -26,7 +26,7 @@ export function ensureSongFunctions(song: Song): Song {
     return [...arr].sort((a, b) => a.time - b.time)
   }
 
-  const items = song.items ?? sort([...(song.measures ?? []), ...(song.notes ?? [])])
+  const items = sort([...(song.measures ?? []), ...(song.notes ?? [])])
 
   if (typeof song.secondsToTicks === 'function' && typeof song.ticksToSeconds === 'function') {
     return {
