@@ -354,7 +354,19 @@ export async function getUploadedSong(id: string): Promise<Song | null> {
 }
 
 export function getPersistedSongSettings(file: string) {
-  return Storage.get<SongConfig>(`${file}/settings`)
+  const settings = Storage.get<SongConfig>(`${file}/settings`)
+  if (settings && settings.tracks) {
+    const allMuted = Object.values(settings.tracks).every((t) => t.sound === false)
+    if (allMuted) {
+      Object.keys(settings.tracks).forEach((idStr) => {
+        const id = Number(idStr)
+        if (settings.tracks[id]) {
+          settings.tracks[id].sound = true
+        }
+      })
+    }
+  }
+  return settings
 }
 
 export function setPersistedSongSettings(file: string, config: SongConfig) {

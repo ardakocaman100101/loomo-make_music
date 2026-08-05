@@ -10,3 +10,4 @@ export {
   eqHighAtom,
   masterVolumeDbAtom,
 } from './effects-bus'
+export { trackAudioEngine, TrackAudioEngine } from './synth-manager'

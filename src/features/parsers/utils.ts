@@ -22,7 +22,15 @@ export function isPiano(t: Track): boolean {
     (0 <= program && program <= 6)
   )
 }
-export function parserInferHands(song: Song): { left: number; right: number } {
+export function parserInferHands(song: Song): { left?: number; right?: number } {
+  const trackIds = Object.keys(song.tracks).map(Number)
+  if (trackIds.length === 0) {
+    return {}
+  }
+  if (trackIds.length === 1) {
+    return { right: trackIds[0] }
+  }
+
   // First, check against known likely left/right names for tracks:
   const trackNames = Object.values(song.tracks).map((track) => track.name ?? '')
   const likelyLeft = ['bass', 'left', 'lh', 'L.H.']
@@ -41,31 +49,34 @@ export function parserInferHands(song: Song): { left: number; right: number } {
       right: +rightId,
     }
   }
+
   const pianoTracks = Array.from(Object.entries(song.tracks))
     .filter(([_id, track]) => isPiano(track))
     .filter(([id, _track]) => {
-      const notes = song.notes.filter((note) => note.track === +id)
       return song.notes.filter((note) => note.track === +id).length > 0
     })
-  // TODO: force users to choose tracks in this case.
+
+  if (pianoTracks.length === 1) {
+    return { right: +pianoTracks[0][0] }
+  }
 
   let t1!: number
   let t2!: number
   if (pianoTracks.length >= 2) {
-    if (pianoTracks.length > 2) {
-      console.warn(
-        `Choosing the first two Piano tracks, even though there are ${pianoTracks.length}`,
-      )
-    }
-    ;[t1, t2] = pianoTracks.map(([trackId, _track]) => +trackId)
-  } else if (pianoTracks.length < 2) {
-    ;[t1, t2] = Object.keys(song.tracks).map(Number)
+    ;[t1, t2] = pianoTracks.slice(0, 2).map(([trackId]) => +trackId)
+  } else {
+    [t1, t2] = trackIds.slice(0, 2)
   }
-  // Dumb way to determine r/l hand, calc which has the higher avg score, and flip if guessed wrong.
+
+  if (t1 !== undefined && t2 === undefined) {
+    return { right: t1 }
+  }
+
   const sum = (arr: Array<number>) => arr.reduce((a: number, b: number) => a + b, 0)
-  const avg = (arr: Array<number>) => sum(arr) / arr.length
+  const avg = (arr: Array<number>) => (arr.length > 0 ? sum(arr) / arr.length : 0)
   let t1Avg = avg(song.notes.filter((n) => n.track === t1).map((n) => n.midiNote))
   let t2Avg = avg(song.notes.filter((n) => n.track === t2).map((n) => n.midiNote))
+
   if (t1Avg < t2Avg) {
     return { left: t1, right: t2 }
   }

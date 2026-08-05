@@ -1,11 +1,16 @@
 // TODO: handle when users don't have an AudioContext supporting browser
-import { getSynthStub, InstrumentName } from '@/features/synth'
+import { getSynthStub, InstrumentName, trackAudioEngine } from '@/features/synth'
 import { MidiStateEvent, Song, SongConfig, SongMeasure, SongNote, TrackSetting } from '@/types'
 import { getHands, round } from '@/utils'
 import { atom, Atom, getDefaultStore, PrimitiveAtom } from 'jotai'
 import midi from '../midi'
 import { getSynth, Synth } from '../synth'
 import { getAudioContext } from '../synth/utils'
+import {
+  calculateNoteDurationScore,
+  evaluateFirstPressScore,
+  sessionScoreHistory,
+} from './scoring'
 
 function increment(x: number) {
   return x + 1
@@ -113,6 +118,7 @@ export class Player {
   hitNotes: Set<SongNote> = new Set()
   missedNotes: Set<SongNote> = new Set()
   midiPressedNotes: Set<number> = new Set()
+  keyPressTimes: Map<number, number> = new Map()
   pressFeedback: Map<number, string> = new Map()
   lateNotes: Map<number, SongNote[]> = new Map()
   skipMissedNotes = false
@@ -146,6 +152,7 @@ export class Player {
         const diff = this.calcDiff(this.currentSongTime, missedNote.time)
         if (diff > this.goodRange) {
           missedNotes++
+          missedNote.durationScore = 0
           this.missedNotes.add(missedNote)
           return false
         }
@@ -161,6 +168,13 @@ export class Player {
       this.store.set(this.score.streak, 0)
     }
     this.store.set(this.score.missed, (count) => count + missedNotes)
+
+    // Silently update continuous duration score for finished hit notes
+    for (const hitNote of this.hitNotes) {
+      if (hitNote.durationScore === undefined && this.currentSongTime >= hitNote.time + hitNote.duration) {
+        hitNote.durationScore = calculateNoteDurationScore(hitNote, this.currentSongTime)
+      }
+    }
   }
 
   processMidiEvent(midiEvent: MidiStateEvent) {
@@ -176,6 +190,7 @@ export class Player {
 
     if (midiEvent.type === 'up') {
       this.midiPressedNotes.delete(midiNote)
+      this.keyPressTimes.delete(midiNote)
       this.pressFeedback.delete(midiNote)
       for (const note of this.hitNotes) {
         if (
@@ -184,6 +199,7 @@ export class Player {
           note.userPressEnd === undefined
         ) {
           note.userPressEnd = this.currentSongTime
+          note.durationScore = calculateNoteDurationScore(note, this.currentSongTime)
         }
       }
       return
@@ -192,6 +208,7 @@ export class Player {
         return
       }
       this.midiPressedNotes.add(midiNote)
+      this.keyPressTimes.set(midiNote, this.currentSongTime)
     }
 
     if (this.isPlaying()) {
@@ -204,34 +221,48 @@ export class Player {
   processScoreData(midiNote: number) {
     this.clearMissedNotes_()
     const currentTime = this.currentSongTime
+    const pressTime = this.keyPressTimes.get(midiNote) ?? currentTime
 
     // 1. Check if the note is in lateNotes
     const list = this.lateNotes.get(midiNote)
     if (list && list.length > 0) {
-      const lateNote = list.find((n) => !this.hitNotes.has(n) && n.feedbackColor === undefined)
+      const lateNote = list.find((n) => {
+        if (this.hitNotes.has(n) || n.feedbackColor !== undefined) return false
+        const attackDiffMs = Math.abs(this.calcDiff(n.time, pressTime))
+        return attackDiffMs <= this.goodRange
+      })
       if (lateNote) {
         const diff = Math.abs(this.calcDiff(currentTime, lateNote.time))
         if (diff <= this.goodRange) {
-          const remaining = list.filter((n) => n !== lateNote)
+          const color = diff <= this.perfectRange ? 'green' : 'purple'
+          if (diff <= this.perfectRange) {
+            this.store.set(this.score.perfect, increment)
+          } else {
+            this.store.set(this.score.late, increment)
+          }
+
+          // Evaluate all unison notes at this exact timestamp
+          const unisonNotes = list.filter(
+            (n) => !this.hitNotes.has(n) && Math.abs(this.calcDiff(n.time, lateNote.time)) < 5,
+          )
+          const notesToHit = unisonNotes.length > 0 ? unisonNotes : [lateNote]
+
+          notesToHit.forEach((n) => {
+            n.feedbackColor = color
+            n.userPressStart = currentTime
+            this.hitNotes.add(n)
+            this.missedNotes.delete(n)
+          })
+
+          const remaining = list.filter((n) => !notesToHit.includes(n))
           if (remaining.length === 0) {
             this.lateNotes.delete(midiNote)
           } else {
             this.lateNotes.set(midiNote, remaining)
           }
 
-          if (diff <= this.perfectRange) {
-            this.store.set(this.score.perfect, increment)
-            this.pressFeedback.set(midiNote, 'green')
-            lateNote.feedbackColor = 'green'
-          } else {
-            this.store.set(this.score.late, increment)
-            this.pressFeedback.set(midiNote, 'purple')
-            lateNote.feedbackColor = 'purple'
-          }
+          this.pressFeedback.set(midiNote, color)
           this.store.set(this.score.streak, increment)
-          lateNote.userPressStart = currentTime
-          this.hitNotes.add(lateNote)
-          this.missedNotes.delete(lateNote)
           if (this.skipMissedNotes) {
             this.playNote(lateNote)
           }
@@ -245,35 +276,53 @@ export class Player {
     if (song && song.notes) {
       const maxMarginSec = ((this.goodRange * 1.5) / 1000) * this.store.get(this.bpmModifier)
 
-      const nextNote = song.notes.find((n) => {
-        if (
-          n.midiNote !== midiNote ||
-          !this.isActiveHand(n) ||
-          this.hitNotes.has(n) ||
-          n.feedbackColor !== undefined
-        ) {
-          return false
-        }
-        const diffMs = Math.abs(this.calcDiff(n.time, currentTime))
-        return diffMs <= this.goodRange && n.time >= currentTime - maxMarginSec
-      })
+      const candidateNotes = song.notes
+        .filter((n) => {
+          if (
+            n.midiNote !== midiNote ||
+            !this.isActiveHand(n) ||
+            this.hitNotes.has(n) ||
+            n.feedbackColor !== undefined
+          ) {
+            return false
+          }
+          const diffMs = Math.abs(this.calcDiff(n.time, currentTime))
+          const attackDiffMs = Math.abs(this.calcDiff(n.time, pressTime))
+          return (
+            diffMs <= this.goodRange &&
+            attackDiffMs <= this.goodRange &&
+            n.time >= currentTime - maxMarginSec
+          )
+        })
+        .sort((a, b) => Math.abs(a.time - currentTime) - Math.abs(b.time - currentTime))
+
+      const nextNote = candidateNotes[0]
 
       if (nextNote) {
         const diff = Math.abs(this.calcDiff(nextNote.time, currentTime))
+        const color = diff <= this.perfectRange ? 'green' : 'yellow'
+
         if (diff <= this.perfectRange) {
           this.store.set(this.score.perfect, increment)
-          this.pressFeedback.set(midiNote, 'green')
-          nextNote.feedbackColor = 'green'
         } else {
           this.store.set(this.score.early, increment)
-          this.pressFeedback.set(midiNote, 'yellow')
-          nextNote.feedbackColor = 'yellow'
         }
 
+        // Evaluate all unison notes at this exact timestamp (same pitch, same time)
+        const unisonNotes = candidateNotes.filter(
+          (n) => Math.abs(this.calcDiff(n.time, nextNote.time)) < 5,
+        )
+        const notesToHit = unisonNotes.length > 0 ? unisonNotes : [nextNote]
+
+        notesToHit.forEach((n) => {
+          n.feedbackColor = color
+          n.userPressStart = currentTime
+          this.hitNotes.add(n)
+          this.missedNotes.delete(n)
+        })
+
+        this.pressFeedback.set(midiNote, color)
         this.store.set(this.score.streak, increment)
-        nextNote.userPressStart = currentTime
-        this.hitNotes.add(nextNote)
-        this.missedNotes.delete(nextNote)
         return
       }
     }
@@ -322,27 +371,14 @@ export class Player {
     this.songHands = getHands(songConfig)
     this.store.set(this.state, 'CannotPlay')
 
-    const synths: Promise<Synth>[] = []
-    Object.entries(song.tracks).forEach(async ([trackId, config]) => {
-      const instrument =
-        songConfig.tracks[+trackId]?.instrument ?? config.program ?? config.instrument ?? 0
-      synths[+trackId] = getSynth(instrument)
-    })
-    await Promise.all(synths).then((s) => {
-      this.synths = s
-      // setTrackVolume must be called after synths have been set
-      Object.entries(song.tracks).forEach(([trackId]) => {
-        const vol = songConfig.tracks[+trackId]?.sound ? 1 : 0
-        this.setTrackVolume(+trackId, vol)
-      })
-      this.store.set(this.state, 'Paused')
-    })
-    // this.skipMissedNotes = songConfig.skipMissedNotes
+    await trackAudioEngine.setSongTracks(song.tracks, songConfig.tracks)
+    this.store.set(this.state, 'Paused')
     this.wait = songConfig.waiting
   }
 
   setVolume(vol: number) {
     this.store.set(this.volume, vol)
+    trackAudioEngine.setMasterVolume(vol)
     const backingTrack = this.getSong()?.backing
     if (backingTrack) {
       backingTrack.volume = 0.15 * vol
@@ -351,19 +387,15 @@ export class Player {
 
   setInstrumentVolume(vol: number) {
     this.store.set(this.instrumentVolume, vol)
+    trackAudioEngine.setKeyboardVolume(vol)
   }
 
   setTrackVolume(track: number | string, vol: number) {
-    this.synths?.[+track]?.setMasterVolume(vol)
+    trackAudioEngine.setTrackVolume(+track, vol)
   }
 
   async setTrackInstrument(track: number | string, instrument: InstrumentName) {
-    const existingVol =
-      (this.synths[+track] as any)?.masterVolume ??
-      (this.trackConfigs[+track]?.sound !== false ? 1 : 0)
-    const synth = await getSynth(instrument)
-    synth.setMasterVolume(existingVol)
-    this.synths[+track] = synth
+    await trackAudioEngine.setTrackInstrument(+track, instrument)
   }
 
   isActiveHand(note: SongNote) {
@@ -464,6 +496,8 @@ export class Player {
       return
     }
 
+    trackAudioEngine.ensureAudioContextRunning()
+
     // If at the end of the song, restart it
     if (this.currentSongTime >= this.getDuration()) {
       this.seek(0)
@@ -484,46 +518,25 @@ export class Player {
 
   playNote(note: SongNote) {
     const guideVol = this.store.get(this.volume)
-    const vel = (note.velocity ?? 80) * guideVol
-    this.synths[note.track]?.playNote(note.midiNote, vel)
+    trackAudioEngine.playTrackNote(note.track, note.midiNote, (note.velocity ?? 80) * guideVol)
   }
 
   playUserNote(midiNote: number, velocity = 127 / 2) {
-    const song = this.getSong()
-    let trackId = 0
-    if (song && Object.keys(this.trackConfigs).length > 0) {
-      const activeEntry =
-        Object.entries(this.trackConfigs).find(([_, config]) => config.practice && config.sound) ||
-        Object.entries(this.trackConfigs).find(([_, config]) => config.sound)
-      if (activeEntry) {
-        trackId = Number(activeEntry[0])
-      }
-    }
     const keysVol = this.store.get(this.instrumentVolume)
-    this.synths[trackId]?.playNote(midiNote, velocity * keysVol)
+    trackAudioEngine.setKeyboardVolume(keysVol)
+    trackAudioEngine.playUserNote(midiNote, velocity)
   }
 
   stopUserNote(midiNote: number) {
-    const song = this.getSong()
-    let trackId = 0
-    if (song && Object.keys(this.trackConfigs).length > 0) {
-      const activeEntry =
-        Object.entries(this.trackConfigs).find(([_, config]) => config.practice && config.sound) ||
-        Object.entries(this.trackConfigs).find(([_, config]) => config.sound)
-      if (activeEntry) {
-        trackId = Number(activeEntry[0])
-      }
-    }
-    this.synths[trackId]?.stopNote(midiNote)
+    trackAudioEngine.stopUserNote(midiNote)
+  }
+
+  stopNote(note: SongNote) {
+    trackAudioEngine.stopTrackNote(note.track, note.midiNote)
   }
 
   stopNotes(notes: Array<SongNote>) {
-    if (notes.length === 0 || this.synths.length === 0) {
-      return
-    }
-    for (let note of notes) {
-      this.synths[note.track].stopNote(note.midiNote)
-    }
+    notes.forEach((note) => this.stopNote(note))
   }
 
   updateTime_() {
@@ -561,7 +574,7 @@ export class Player {
         this.seek(0)
         return
       } else {
-        this.seek(this.getDuration())
+        this.currentIndex = song.notes.length
         this.pause()
         return
       }
@@ -609,7 +622,11 @@ export class Player {
       this.store.set(this.score.durationHeld, (duration) => duration + heldNotes)
     }
 
-    while (song.notes[this.currentIndex]?.time < time) {
+    while (
+      this.currentIndex >= 0 &&
+      this.currentIndex < song.notes.length &&
+      song.notes[this.currentIndex].time < time
+    ) {
       const note = song.notes[this.currentIndex]
 
       if (this.isActiveHand(note)) {
@@ -667,14 +684,47 @@ export class Player {
     this.play()
   }
 
-  stopAllSounds() {
-    this.stopNotes(this.playing)
+  recordSessionScoreSnapshot() {
+    const song = this.getSong()
+    if (!song) return
+
+    const songId = (song as any).id || (song as any).meta?.id || 'current_song'
+    const songTitle = (song as any).title || (song as any).meta?.title || 'Untitled Song'
+
+    const perfect = this.store.get(this.score.perfect)
+    const early = this.store.get(this.score.early)
+    const late = this.store.get(this.score.late)
+    const missed = this.store.get(this.score.missed)
+    const error = this.store.get(this.score.error)
+    const accuracy = this.store.get(this.score.accuracy)
+
+    const playedNotes = song.notes.filter((n) => n.durationScore !== undefined)
+    const avgDuration =
+      playedNotes.length > 0
+        ? playedNotes.reduce((acc, n) => acc + (n.durationScore || 0), 0) / playedNotes.length
+        : 0
+
+    sessionScoreHistory.addRecord({
+      id: `${songId}_${Date.now()}`,
+      songId,
+      songTitle,
+      timestamp: Date.now(),
+      perfect,
+      early,
+      late,
+      missed,
+      error,
+      accuracy,
+      averageDurationScore: Math.round(avgDuration * 100) / 100,
+      streakMax: this.store.get(this.score.streak),
+    })
   }
 
   pause() {
     if (!this.isPlaying()) {
       return
     }
+    this.recordSessionScoreSnapshot()
     this.store.set(this.state, 'Paused')
     clearInterval(this.playInterval)
     this.store.get(this.song)?.backing?.pause()
@@ -715,6 +765,7 @@ export class Player {
   resetStats_() {
     this.hitNotes.clear()
     this.missedNotes.clear()
+    this.keyPressTimes.clear()
     this.store.set(this.score.early, 0)
     this.store.set(this.score.late, 0)
     this.store.set(this.score.missed, 0)
@@ -728,6 +779,7 @@ export class Player {
         delete note.userPressStart
         delete note.userPressEnd
         delete note.feedbackColor
+        delete note.durationScore
       })
     }
   }
@@ -736,6 +788,10 @@ export class Player {
     this.store.set(this.metronomeVolume, 0)
     this.store.set(this.metronomeSpeed, 1)
     this.store.set(this.metronomeEmphasizeFirst, false)
+  }
+
+  stopAllSounds() {
+    trackAudioEngine.stopAllSounds()
   }
 
   seek(time: number) {
@@ -752,7 +808,8 @@ export class Player {
     this.playing = song.notes.filter((note) => {
       return note.time < this.currentSongTime && this.currentSongTime < note.time + note.duration
     })
-    this.currentIndex = song.notes.findIndex((note) => note.time >= this.currentSongTime)
+    const idx = song.notes.findIndex((note) => note.time >= this.currentSongTime)
+    this.currentIndex = idx === -1 ? song.notes.length : idx
     this.store.set(this.currentBpmIndex, this.getBpmIndexForTime(time))
 
     this.metronomeLastPlayedTick = this.getLatestMetronomeTick(time)

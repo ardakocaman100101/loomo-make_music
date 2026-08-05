@@ -33,12 +33,19 @@ export function getKeyForSoundfont(note: number) {
 
 if (isBrowser()) {
   const handleUserInteraction = () => {
-    if (Tone.getContext().state !== 'running') {
-      Tone.start()
-    }
+    try {
+      const rawCtx = Tone.getContext().rawContext
+      if (rawCtx && rawCtx.state !== 'running') {
+        rawCtx.resume()
+      }
+      if (Tone.getContext().state !== 'running') {
+        Tone.start()
+      }
+    } catch (_) {}
   }
-  document.addEventListener('touchstart', handleUserInteraction, { passive: true })
-  document.addEventListener('touchend', handleUserInteraction, { passive: true })
-  document.addEventListener('click', handleUserInteraction, { passive: true })
-  document.addEventListener('keydown', handleUserInteraction, { passive: true })
+  window.addEventListener('touchstart', handleUserInteraction, { capture: true, passive: true })
+  window.addEventListener('touchend', handleUserInteraction, { capture: true, passive: true })
+  window.addEventListener('pointerdown', handleUserInteraction, { capture: true, passive: true })
+  window.addEventListener('click', handleUserInteraction, { capture: true, passive: true })
+  window.addEventListener('keydown', handleUserInteraction, { capture: true, passive: true })
 }

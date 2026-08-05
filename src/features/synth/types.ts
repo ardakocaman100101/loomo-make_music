@@ -9,4 +9,5 @@ export interface Synth {
   setMasterVolume(vol: number): void
   setPitchBend?(semitones: number): void
   getInstrument(): InstrumentName
+  dispose?(): void
 }

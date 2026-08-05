@@ -106,7 +106,10 @@ async function renderVideo(file: string) {
     height: viewport.height,
     pps,
     hand: 'both',
-    hands: { [hands.right]: { hand: 'right' }, [hands.left]: { hand: 'left' } },
+    hands: {
+      ...(hands.right !== undefined ? { [hands.right]: { hand: 'right' } } : {}),
+      ...(hands.left !== undefined ? { [hands.left]: { hand: 'left' } } : {}),
+    },
     items: items,
     constrictView: true,
     keySignature: 'C',

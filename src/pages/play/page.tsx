@@ -34,7 +34,7 @@ import {
 } from 'lucide-react'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
-import { TopBar, TrackHUD } from './components'
+import { CompletionModal, TopBar, TrackHUD } from './components'
 import { MidiModal } from './components/MidiModal'
 import { StatsPopup } from './components/StatsPopup'
 import { ButtonWithTooltip } from './components/TopBar'
@@ -93,7 +93,7 @@ function SongNotFound({ songTitle, onGoBack }: { songTitle?: string; onGoBack: (
         )}
         <p className="mb-6 text-sm text-gray-500">
           Please check that the file still exists or try selecting a different song. It may also be
-          that Sightread lost access to your local files. If that's the case, please re-scan
+          that loomo lost access to your local files. If that's the case, please re-scan
           directories in the "Manage Folders" menu.
         </p>
         <button
@@ -236,6 +236,51 @@ export default function PlaySongPage() {
     })
   }, [songConfig.tracks, player, song])
 
+  const [isCompletedModalOpen, setIsCompletedModalOpen] = useState(false)
+  const [hasDismissedModal, setHasDismissedModal] = useState(false)
+
+  // Auto-trigger CompletionModal when song reaches completion
+  useEffect(() => {
+    const checkCompletion = setInterval(() => {
+      if (
+        player &&
+        song &&
+        player.getDuration() > 0
+      ) {
+        if (player.currentSongTime < player.getDuration() - 1 && hasDismissedModal) {
+          setHasDismissedModal(false)
+        }
+
+        if (
+          player.currentSongTime >= player.getDuration() - 0.15 &&
+          !isCompletedModalOpen &&
+          !hasDismissedModal
+        ) {
+          setIsCompletedModalOpen(true)
+          player.pause()
+        }
+      }
+    }, 250)
+
+    return () => clearInterval(checkCompletion)
+  }, [player, song, isCompletedModalOpen, hasDismissedModal])
+
+  const handleCloseCompletionModal = () => {
+    setIsCompletedModalOpen(false)
+    setHasDismissedModal(true)
+    player.pause()
+  }
+
+  const handleReplaySong = () => {
+    setIsCompletedModalOpen(false)
+    setHasDismissedModal(false)
+    player.pause()
+    player.seek(0)
+    setTimeout(() => {
+      player.play()
+    }, 2000)
+  }
+
   useOnUnmount(() => player.stop())
 
   useEffect(() => {
@@ -243,10 +288,30 @@ export default function PlaySongPage() {
     // TODO: handle invalid song. Pipe up not-found midi for 400s etc.
     let config = getSongSettings(id, song)
 
+    // Ensure all tracks default to sound: true so guide notes are never muted on load
+    const unmutedTracks = { ...config.tracks }
+    Object.keys(unmutedTracks).forEach((trackIdStr) => {
+      const trackId = Number(trackIdStr)
+      if (unmutedTracks[trackId]) {
+        unmutedTracks[trackId] = {
+          ...unmutedTracks[trackId],
+          sound: true,
+        }
+      }
+    })
+    config = { ...config, tracks: unmutedTracks }
+
     const practiceTrackIdParam = searchParams.get('practiceTrackId')
     if (practiceTrackIdParam !== null) {
-      const practiceTrackId = Number(practiceTrackIdParam)
-      if (!isNaN(practiceTrackId)) {
+      const rawParam = Number(practiceTrackIdParam)
+      if (!isNaN(rawParam)) {
+        const trackIds = Object.keys(config.tracks).map(Number)
+        // If rawParam doesn't exist in trackIds but (rawParam - 1) does, adjust for 1-based UI indexing
+        let practiceTrackId = rawParam
+        if (!trackIds.includes(practiceTrackId) && trackIds.includes(practiceTrackId - 1)) {
+          practiceTrackId = practiceTrackId - 1
+        }
+
         const updatedTracks = { ...config.tracks }
         Object.keys(updatedTracks).forEach((trackIdStr) => {
           const trackId = Number(trackIdStr)
@@ -255,7 +320,7 @@ export default function PlaySongPage() {
           updatedTracks[trackId] = {
             ...updatedTracks[trackId],
             practice: isTarget,
-            sound: isTarget,
+            sound: true,
             hand: isTarget
               ? existingHand && existingHand !== 'none'
                 ? existingHand
@@ -291,8 +356,50 @@ export default function PlaySongPage() {
     }
   }, [song, setSongConfig, id, player, songMeta?.title, searchParams])
 
+  const handleCycleNextTrackPractice = React.useCallback(() => {
+    if (!song) return
+    const availableTracks = Object.keys(song.tracks)
+      .map(Number)
+      .filter((id) => song.notes.some((n) => n.track === id))
+      .sort((a, b) => a - b)
+
+    if (availableTracks.length <= 1) return
+
+    setSongConfig((prev) => {
+      const currentPracticeId = availableTracks.find((id) => prev.tracks[id]?.practice)
+      const currentIdx = currentPracticeId !== undefined ? availableTracks.indexOf(currentPracticeId) : -1
+      const nextIdx = (currentIdx + 1) % availableTracks.length
+      const nextTrackId = availableTracks[nextIdx]
+
+      const newTracks = { ...prev.tracks }
+      Object.keys(newTracks).forEach((idStr) => {
+        const id = Number(idStr)
+        const isTarget = id === nextTrackId
+        const existingHand = newTracks[id]?.hand
+        newTracks[id] = {
+          ...newTracks[id],
+          practice: isTarget,
+          hand: isTarget
+            ? existingHand && existingHand !== 'none'
+              ? existingHand
+              : 'right'
+            : 'none',
+        }
+      })
+      return { ...prev, tracks: newTracks }
+    })
+  }, [song, setSongConfig])
+
   useEventListener<KeyboardEvent>('keydown', (evt: KeyboardEvent) => {
-    if (evt.code === 'Space') {
+    if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') {
+      return
+    }
+
+    if (evt.key === 'Shift' || evt.code === 'ShiftLeft' || evt.code === 'ShiftRight') {
+      if (!evt.repeat) {
+        handleCycleNextTrackPractice()
+      }
+    } else if (evt.code === 'Space') {
       evt.preventDefault()
       player.toggle()
     } else if (evt.shiftKey && evt.code === 'Comma') {
@@ -356,6 +463,30 @@ export default function PlaySongPage() {
             [trackId]: { ...current, practice: !current.practice },
           },
         }
+      })
+    },
+    [setSongConfig],
+  )
+
+  const handleSoloPractice = React.useCallback(
+    (trackId: number) => {
+      setSongConfig((prev) => {
+        const newTracks = { ...prev.tracks }
+        Object.keys(newTracks).forEach((idStr) => {
+          const id = Number(idStr)
+          const isTarget = id === trackId
+          const existingHand = newTracks[id]?.hand
+          newTracks[id] = {
+            ...newTracks[id],
+            practice: isTarget,
+            hand: isTarget
+              ? existingHand && existingHand !== 'none'
+                ? existingHand
+                : 'right'
+              : 'none',
+          }
+        })
+        return { ...prev, tracks: newTracks }
       })
     },
     [setSongConfig],
@@ -599,6 +730,7 @@ export default function PlaySongPage() {
                   config={songConfig}
                   onToggleMute={handleToggleMute}
                   onTogglePractice={handleTogglePractice}
+                  onSoloPractice={handleSoloPractice}
                 />
               )}
             </div>
@@ -624,6 +756,11 @@ export default function PlaySongPage() {
           />
         </div>
       </div>
+      <CompletionModal
+        isOpen={isCompletedModalOpen}
+        onClose={handleCloseCompletionModal}
+        onReplay={handleReplaySong}
+      />
     </>
   )
 }

@@ -2,14 +2,15 @@ import { Song, SongConfig } from '@/types'
 import { formatInstrumentName } from '@/utils'
 import clsx from 'clsx'
 import { Eye, Volume2, VolumeX } from 'lucide-react'
-import React from 'react'
+import React, { useRef } from 'react'
 
 type TrackHUDProps = {
   song: Song
   config: SongConfig
   onToggleMute: (trackId: number) => void
-  onSolo: (trackId: number) => void
+  onSolo?: (trackId: number) => void
   onTogglePractice: (trackId: number) => void
+  onSoloPractice?: (trackId: number) => void
 }
 
 export default function TrackHUD({
@@ -17,7 +18,27 @@ export default function TrackHUD({
   config,
   onToggleMute,
   onTogglePractice,
+  onSoloPractice,
 }: Omit<TrackHUDProps, 'onSolo'>) {
+  const clickTimerRef = useRef<Record<number, ReturnType<typeof setTimeout>>>({})
+
+  const handleEyeClick = (id: number) => {
+    if (clickTimerRef.current[id]) {
+      clearTimeout(clickTimerRef.current[id])
+      delete clickTimerRef.current[id]
+      if (onSoloPractice) {
+        onSoloPractice(id)
+      } else {
+        onTogglePractice(id)
+      }
+    } else {
+      clickTimerRef.current[id] = setTimeout(() => {
+        delete clickTimerRef.current[id]
+        onTogglePractice(id)
+      }, 220)
+    }
+  }
+
   const tracks = Object.entries(song.tracks).filter(([_, t]) =>
     song.notes.some((n) => n.track === Number(_)),
   )
@@ -52,12 +73,12 @@ export default function TrackHUD({
               </span>
               <div className="flex items-center gap-1.5">
                 <button
-                  onClick={() => onTogglePractice(id)}
+                  onClick={() => handleEyeClick(id)}
                   className={clsx(
                     'rounded border-0 bg-transparent p-1 transition select-none',
                     settings?.practice ? 'text-[#6c79f0]' : 'text-white/35 hover:text-white',
                   )}
-                  title="Toggle note appearance"
+                  title="Toggle note appearance (Double click to show only this track)"
                 >
                   <Eye size={15} />
                 </button>
@@ -85,3 +106,4 @@ export default function TrackHUD({
     </div>
   )
 }
+

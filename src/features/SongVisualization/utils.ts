@@ -92,7 +92,16 @@ export function getDefaultSongSettings(song?: Song): SongConfig {
 
 export function getSongSettings(file: string, song: Song): SongConfig {
   let persisted = getPersistedSongSettings(file)
-  if (persisted) {
+  if (persisted && persisted.tracks) {
+    const allMuted = Object.values(persisted.tracks).every((t) => t.sound === false)
+    Object.keys(persisted.tracks).forEach((idStr) => {
+      const id = Number(idStr)
+      if (persisted.tracks[id]) {
+        if (allMuted || persisted.tracks[id].sound === undefined) {
+          persisted.tracks[id].sound = true
+        }
+      }
+    })
     return persisted
   }
   const songSettings = getDefaultSongSettings(song)
@@ -247,3 +256,26 @@ export function getFontSize(
 }
 
 export const PIXELS_PER_SECOND = 225
+
+export function getOptimalPps(
+  song: Song | undefined,
+  defaultPps: number = PIXELS_PER_SECOND,
+): number {
+  if (!song || !song.notes || song.notes.length === 0) {
+    return defaultPps
+  }
+
+  // Find shortest valid note duration (ignore micro-glitches <= 30ms)
+  const validDurations = song.notes.map((n) => n.duration).filter((d) => d > 0.03)
+
+  if (validDurations.length === 0) {
+    return defaultPps
+  }
+
+  const minDuration = Math.min(...validDurations)
+  // Target minimum note height of 26px to comfortably enclose text label
+  const minTargetNoteHeight = 26
+  const requiredPps = minTargetNoteHeight / minDuration
+
+  return Math.min(600, Math.max(defaultPps, requiredPps))
+}

@@ -6,7 +6,7 @@ import { LegacyRef, useEffect, useMemo, useRef } from 'react'
 import { usePlayer } from '../player'
 import { GivenState, render } from './canvas-renderer'
 import { waitForImages } from './images'
-import { PIXELS_PER_SECOND as pps } from './utils'
+import { getOptimalPps, PIXELS_PER_SECOND as pps } from './utils'
 
 type CanvasRendererProps = {
   song: Song | undefined
@@ -44,6 +44,11 @@ function CanvasRenderer({
     waitForImages().then(() => (isReady.current = true))
   })
 
+  const effectivePps = useMemo(() => {
+    const computedPps = getOptimalPps(song, pps)
+    return computedPps * (ppsScale ?? 1)
+  }, [song, ppsScale])
+
   const canvasRect: DOMRect = useMemo(() => {
     return canvasRef.current?.getBoundingClientRect() ?? {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -61,7 +66,7 @@ function CanvasRenderer({
       coloredNotes: config.coloredNotes,
       windowWidth: width,
       height,
-      pps: pps * (ppsScale ?? 1),
+      pps: effectivePps,
       hands: handSettings,
       hand,
       ctx,

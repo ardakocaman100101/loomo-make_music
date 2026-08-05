@@ -131,12 +131,22 @@ function deriveState(state: GivenState): State {
           ? (items.filter((i) => i.type === 'note') as SongNote[])
           : ([{ midiNote: 21 }, { midiNote: 108 }] as SongNote[])
 
+    const activePracticeTracks = Object.values(state.hands || {}).filter((t) => t.practice)
+    const isSingleTrackSelected =
+      activePracticeTracks.length === 1 ||
+      (state.hands && Object.keys(state.hands).length === 1)
+
     let minNotes = state.zoomMode ?? 0
-    if (state.zoomMode === undefined && state.height > state.windowWidth) {
-      if (state.height > 800) minNotes = 48
-      else if (state.height > 600) minNotes = 36
-      else if (state.height > 500) minNotes = 24
-      else minNotes = 24
+    if (state.zoomMode === undefined) {
+      if (isSingleTrackSelected) {
+        minNotes = 12
+      } else if (state.height > state.windowWidth) {
+        if (state.height > 800) minNotes = 48
+        else if (state.height > 600) minNotes = 36
+        else minNotes = 24
+      } else {
+        minNotes = Math.min(36, Math.max(16, Math.floor(state.windowWidth / 28)))
+      }
     }
 
     const { startNote: songStart, endNote: songEnd } = getSongRange(
@@ -153,10 +163,15 @@ function deriveState(state: GivenState): State {
   const pianoWidth = pianoMeasurements.pianoWidth
   const noteHitY = pianoTopY - 120
 
-  const averageLaneWidth = state.windowWidth / Math.max(endNote - startNote, 1)
-  const averageCircleRadius = averageLaneWidth / 2 - 1
-  const perfectRangeMs = (averageCircleRadius / state.pps) * 1000 * 1.5
-  const goodRangeMs = perfectRangeMs * 4
+  const song = state.player.getSong()
+  const currentBpm = song?.bpms?.[state.player.store.get(state.player.currentBpmIndex)]?.bpm || 120
+  const bpmModifier = state.player.store.get(state.player.bpmModifier) || 1
+  const effectiveBpm = currentBpm * bpmModifier
+  const beatDurationMs = (60 / Math.max(20, effectiveBpm)) * 1000
+
+  //Adaptive Feedback (20% of 1 beat for Perfect, 50% of 1 beat for Good)
+  const perfectRangeMs = Math.min(80, Math.max(35, beatDurationMs * 0.20))
+  const goodRangeMs = Math.min(350, Math.max(120, beatDurationMs * 0.50))
   state.player.setTolerance(perfectRangeMs, goodRangeMs)
 
   lastState = {
@@ -388,10 +403,6 @@ function getNoteFeedbackColor(state: State, note: SongNote): string | undefined 
   if (state.player.missedNotes.has(note)) {
     return feedbackColors.red
   }
-  const feedback = state.player.pressFeedback.get(note.midiNote)
-  if (feedback) {
-    return feedbackColors[feedback] ?? feedback
-  }
   return undefined
 }
 
@@ -609,6 +620,8 @@ export function renderFallingNote(
   const pBottomCenter = projectPoint(circleCenterX, posY, state)
   const pTopCenter = projectPoint(circleCenterX, drawnTopY, state)
   const pCenter = projectPoint(circleCenterX, circleCenterY, state)
+  const pBottomLeft = projectPoint(circleCenterX - circleRadius, circleCenterY, state)
+  const pBottomRight = projectPoint(circleCenterX + circleRadius, circleCenterY, state)
 
   // --- 1. Tactile 3D Extrusion Layer (Matching Rounded Perimeter) ---
   const depthZ = Math.max(2.5, 5.0 * pBottomCenter.scale)
@@ -638,11 +651,6 @@ export function renderFallingNote(
 
   let activeFeedbackColor = getNoteFeedbackColor(state, note)
   const isPressed = midiState.getPressedNotes().has(note.midiNote)
-  const liveFeedback = state.player.pressFeedback.get(note.midiNote)
-
-  if (isPressed && liveFeedback && (isActiveTarget || state.time >= note.time - 0.2)) {
-    activeFeedbackColor = feedbackColors[liveFeedback] ?? liveFeedback
-  }
 
   let startRatio = 0
   let endRatio = 0
@@ -652,19 +660,14 @@ export function renderFallingNote(
     const dur = note.duration > 0 ? note.duration : 0.001
 
     if (note.userPressStart !== undefined) {
-      // User pressed this note: fill from userPressStart (playhead t=0) to userPressEnd or current progress
+      // User pressed this note: fill progressively from userPressStart for as long as key is held
       const pressStartSec = note.userPressStart
       const pressEndSec = note.userPressEnd ?? (isPressed ? state.time : note.time + note.duration)
       startRatio = Math.min(1, Math.max(0, (pressStartSec - note.time) / dur))
       endRatio = Math.min(1, Math.max(0.05, (pressEndSec - note.time) / dur))
       isFilled = true
-    } else if (isPressed && state.time >= note.time - 0.05) {
-      // Live key press active: fills progressively from playhead (bottom edge, ratio=0) upward
-      startRatio = 0
-      endRatio = Math.min(1, Math.max(0.05, (state.time - note.time) / dur))
-      isFilled = true
     } else if (state.player.hitNotes.has(note) || note.feedbackColor) {
-      // Struck hit note: fully filled with hit feedback color
+      // Struck hit note: filled with note's feedback color
       startRatio = 0
       endRatio = 1
       isFilled = true
@@ -672,6 +675,11 @@ export function renderFallingNote(
       // Missed note: full red tile
       startRatio = 0
       endRatio = 1
+      isFilled = true
+    } else if (isPressed && state.time >= note.time - 0.05) {
+      // Live key press active: fills progressively from bottom edge upward while pressed
+      startRatio = 0
+      endRatio = Math.min(1, Math.max(0.05, (state.time - note.time) / dur))
       isFilled = true
     }
   }
@@ -715,18 +723,23 @@ export function renderFallingNote(
   const noteText = labelType === 'alphabetical' ? key : getFixedDoNoteFromKey(key)
 
   if (noteLabels !== 'none') {
+    const tileWidth = Math.abs(pBottomRight.x - pBottomLeft.x)
+    const tileHeight = Math.abs(pBottomCenter.y - pTopCenter.y)
+
     ctx.fillStyle = 'white'
     ctx.textBaseline = 'middle'
     ctx.textAlign = 'center'
-    const padding = 2
-    const maxWidth = (circleRadius * 2 - padding * 2) * pCenter.scale
-    let { fontPx } = getOptimalFontSize(ctx, noteText, TEXT_FONT, maxWidth)
-    fontPx = Math.min(fontPx, maxWidth * 0.8)
+
+    const maxAllowedWidth = tileWidth * 0.75
+    const maxAllowedHeight = Math.max(12, tileHeight * 0.65)
+
+    let { fontPx } = getOptimalFontSize(ctx, noteText, TEXT_FONT, maxAllowedWidth)
+    fontPx = Math.min(fontPx, maxAllowedWidth, maxAllowedHeight)
 
     if (noteText.includes('#')) {
       const letter = noteText.replace('#', '')
-      const letterSize = fontPx * 1.1
-      const sharpSize = fontPx * 0.7
+      const letterSize = fontPx * 1.0
+      const sharpSize = fontPx * 0.65
 
       ctx.font = `bold ${letterSize}px ui-sans-serif, system-ui, sans-serif`
       const letterW = ctx.measureText(letter).width

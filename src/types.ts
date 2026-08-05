@@ -47,6 +47,7 @@ export interface SongNote {
   userPressStart?: number
   userPressEnd?: number
   feedbackColor?: string
+  durationScore?: number
 }
 
 export interface Bpm {

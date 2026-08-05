@@ -1453,6 +1453,42 @@ export default function Studio() {
     setSoloTracks(newSolo)
   }
 
+  // Open only the specified track as a standalone single-track MIDI file in Play mode
+  const handlePlaySingleTrack = (trackId: number) => {
+    stopPlayback()
+
+    try {
+      const trackNotes = notes
+        .filter((n) => n.track === trackId)
+        .map((n) => ({ ...n, track: 0 }))
+
+      const singleTrack = tracks[trackId] || { name: `Track ${trackId + 1}`, program: 0 }
+
+      const singleTrackSong: Partial<Song> = {
+        tracks: {
+          [0]: singleTrack,
+        },
+        notes: trackNotes,
+        bpms: [{ time: 0, bpm }],
+        timeSignature: { numerator: 4, denominator: 4 },
+        keySignature: 'C',
+        ppq: 480,
+      }
+
+      const midiBytes = songToMidiBytes(singleTrackSong)
+      const base64Data = bytesToBase64(midiBytes)
+
+      const queryParams = new URLSearchParams()
+      queryParams.set('source', 'base64')
+      queryParams.set('id', base64Data)
+
+      navigate(`/play?${queryParams.toString()}`)
+    } catch (e) {
+      console.error('Failed to generate single track MIDI', e)
+      alert('Error opening single track in Play mode.')
+    }
+  }
+
   // Save changes and return to Practice/Play mode
   const handleSaveAndPractice = async (practiceTrackId?: number) => {
     stopPlayback()
@@ -1904,7 +1940,7 @@ export default function Studio() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
-                            handleSaveAndPractice(trackId)
+                            handlePlaySingleTrack(trackId)
                           }}
                           title="Play this Track"
                           className="flex w-full cursor-pointer items-center justify-center rounded-xl border border-[#8591ff] bg-[#6c79f0] py-2 text-xs font-extrabold tracking-wide text-white shadow-[0_0_15px_rgba(108,121,240,0.35)] transition-all hover:bg-[#8591ff] active:scale-95 sm:text-[13px]"

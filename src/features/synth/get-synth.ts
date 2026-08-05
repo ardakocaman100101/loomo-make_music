@@ -5,8 +5,18 @@ import { loadInstrument } from './loadInstrument'
 import { ToneSamplerSynth } from './tone-synth'
 import { InstrumentName, Synth } from './types'
 
-function isValidInstrument(instrument: InstrumentName | undefined) {
-  return instrument && gmInstruments.find((s) => s === instrument)
+function normalizeInstrumentName(instrument: InstrumentName | number): InstrumentName {
+  if (typeof instrument === 'number') {
+    return gmInstruments[instrument] || gmInstruments[0]
+  }
+  if (!instrument) {
+    return gmInstruments[0]
+  }
+  const normalized = String(instrument)
+    .toLowerCase()
+    .trim()
+    .replace(/[\s-]+/g, '_') as InstrumentName
+  return gmInstruments.includes(normalized) ? normalized : gmInstruments[0]
 }
 
 export async function getSynth(instrument: InstrumentName | number): Promise<Synth> {
@@ -21,20 +31,14 @@ export async function getSynth(instrument: InstrumentName | number): Promise<Syn
     }
   }
 
-  if (typeof instrument === 'number') {
-    instrument = gmInstruments[instrument]
-  }
-  if (!isValidInstrument(instrument)) {
-    console.log('Invalid instrument: ', instrument, 'reverting to acoustic_grand_piano.')
-    instrument = gmInstruments[0]
-  }
+  const validInstrument = normalizeInstrumentName(instrument)
 
-  if (instrument === 'drum_machine_909') {
+  if (validInstrument === 'drum_machine_909') {
     return new Tone909DrumMachineSynth('drum_machine_909')
   }
 
-  const sampler = await loadInstrument(instrument)
-  return new ToneSamplerSynth(instrument, sampler)
+  const sampler = await loadInstrument(validInstrument)
+  return new ToneSamplerSynth(validInstrument, sampler)
 }
 
 export function getSynthStub(instrument: InstrumentName | number): Synth {
