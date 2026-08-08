@@ -599,7 +599,29 @@ export class Player {
       this.store.set(this.currentBpmIndex, increment)
     }
     const stillPlaying = (n: SongNote) => n.time + n.duration > time
-    this.stopNotes(this.playing.filter((n) => !stillPlaying(n)))
+
+    // Look ahead: collect track+pitch combos that start this tick so we don't
+    // send a note-off that would immediately cut off the incoming note-on for
+    // the same pitch (consecutive same-pitch notes audio gap fix).
+    const startingNoteKeys = new Set<string>()
+    {
+      let lookIdx = this.currentIndex
+      while (
+        lookIdx >= 0 &&
+        lookIdx < song.notes.length &&
+        song.notes[lookIdx].time < time
+      ) {
+        const n = song.notes[lookIdx]
+        startingNoteKeys.add(`${n.track}:${n.midiNote}`)
+        lookIdx++
+      }
+    }
+
+    this.stopNotes(
+      this.playing.filter(
+        (n) => !stillPlaying(n) && !startingNoteKeys.has(`${n.track}:${n.midiNote}`),
+      ),
+    )
     this.playing = this.playing.filter(stillPlaying)
 
     // Play metronome sounds
