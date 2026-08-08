@@ -5,6 +5,7 @@ import midiState, { initializeMidi } from '@/features/midi'
 import { requiresPermissionAtom, scanFolders } from '@/features/persist/persistence'
 import { usePlayer } from '@/features/player'
 import { getHandSettings, getSongSettings, SongVisualizer } from '@/features/SongVisualization'
+import { predictSongFingerings } from '@/features/theory/fingering'
 import {
   useEventListener,
   useLazyStableRef,
@@ -281,6 +282,14 @@ export default function PlaySongPage() {
     }, 2000)
   }
 
+  const handlePracticeRecommended = (segment: { start: number; end: number }) => {
+    setIsCompletedModalOpen(false)
+    setHasDismissedModal(true)
+    player.pause()
+    player.setRange(segment)
+    player.seek(segment.start)
+  }
+
   useOnUnmount(() => player.stop())
 
   useEffect(() => {
@@ -492,6 +501,33 @@ export default function PlaySongPage() {
     [setSongConfig],
   )
 
+  const handleSelectHandTrack = React.useCallback(
+    async (trackId: number, hand: 'left' | 'right' | 'none') => {
+      let updatedConfig: any = null
+      setSongConfig((prev) => {
+        const current = prev.tracks[trackId]
+        const newHand = current?.hand === hand ? 'none' : hand
+        updatedConfig = {
+          ...prev,
+          tracks: {
+            ...prev.tracks,
+            [trackId]: { ...current, hand: newHand },
+          },
+        }
+        return updatedConfig
+      })
+      if (song && updatedConfig) {
+        try {
+          const updatedSong = await predictSongFingerings(song, updatedConfig)
+          if (mutate) mutate(updatedSong, false)
+        } catch (e) {
+          console.error('Failed predicting fingerings for hand update:', e)
+        }
+      }
+    },
+    [setSongConfig, song, mutate],
+  )
+
   useOnUnmount(() => player.stop())
 
   useEffect(() => {
@@ -648,16 +684,26 @@ export default function PlaySongPage() {
                   <SkipForward
                     size={20}
                     className="text-white/70 transition-colors duration-200 hover:text-white"
-                    onClick={() => player.seek(player.getDuration())}
+                    onClick={() => player.skipToEnd()}
                   />
                 </ButtonWithTooltip>
 
                 <ButtonWithTooltip
-                  tooltip="Toggle Loop"
-                  isActive={songLoop}
-                  onClick={() => player.store.set(player.songLoop, !songLoop)}
+                  tooltip={isLooping ? "Loop active (Practice Mode)" : "Toggle Loop"}
+                  isActive={songLoop || isLooping}
+                  onClick={() => {
+                    if (!isLooping) {
+                      player.store.set(player.songLoop, !songLoop)
+                    }
+                  }}
                 >
-                  <Repeat size={20} className="transition-colors duration-200" />
+                  <Repeat
+                    size={20}
+                    className={clsx(
+                      'transition-colors duration-200',
+                      isLooping && 'cursor-not-allowed opacity-70 text-[#6c79f0]',
+                    )}
+                  />
                 </ButtonWithTooltip>
 
                 <ButtonWithTooltip
@@ -731,6 +777,7 @@ export default function PlaySongPage() {
                   onToggleMute={handleToggleMute}
                   onTogglePractice={handleTogglePractice}
                   onSoloPractice={handleSoloPractice}
+                  onSelectHand={handleSelectHandTrack}
                 />
               )}
             </div>
@@ -760,6 +807,7 @@ export default function PlaySongPage() {
         isOpen={isCompletedModalOpen}
         onClose={handleCloseCompletionModal}
         onReplay={handleReplaySong}
+        onPracticeRecommended={handlePracticeRecommended}
       />
     </>
   )

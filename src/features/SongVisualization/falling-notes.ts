@@ -425,22 +425,22 @@ function renderRange(state: State) {
 
   const { start, end } = state.selectedRange
   ctx.save()
-  const duration = end - start
-  const canvasY = getItemStartEnd(
-    { type: 'note', time: start, duration } as CanvasItem,
-    state,
-  ).start
+  const duration = Math.max(0, end - start)
   const rectHeight = duration * pps
-  const posY = canvasY
-  const tailTopY = canvasY - rectHeight
+
+  // Constant anchor at the piano strike line throughout practice mode
+  const isReverse = state.visualization === 'reverse-waterfall'
+  const posY = state.noteHitY
+  const tailTopY = isReverse ? state.noteHitY + rectHeight : state.noteHitY - rectHeight
 
   const bottomLeft = projectPoint(0, posY, state)
   const bottomRight = projectPoint(state.windowWidth, posY, state)
   const topRight = projectPoint(state.windowWidth, tailTopY, state)
   const topLeft = projectPoint(0, tailTopY, state)
 
+  // Translucent background fill for the practice range (constant throughout practice)
   ctx.fillStyle = colors.rangeSelectionFill
-  ctx.globalAlpha = 0.5
+  ctx.globalAlpha = 0.22
 
   ctx.beginPath()
   ctx.moveTo(bottomLeft.x, bottomLeft.y)
@@ -449,6 +449,35 @@ function renderRange(state: State) {
   ctx.lineTo(topLeft.x, topLeft.y)
   ctx.closePath()
   ctx.fill()
+
+  // Render dashed boundary lines for the fixed practice region
+  ctx.globalAlpha = 0.95
+  ctx.strokeStyle = '#818cf8'
+  ctx.lineWidth = 2.5
+  ctx.setLineDash([8, 6])
+
+  // Strike line boundary across canvas
+  ctx.beginPath()
+  ctx.moveTo(bottomLeft.x, bottomLeft.y)
+  ctx.lineTo(bottomRight.x, bottomRight.y)
+  ctx.stroke()
+
+  // Top practice boundary line across canvas
+  ctx.beginPath()
+  ctx.moveTo(topLeft.x, topLeft.y)
+  ctx.lineTo(topRight.x, topRight.y)
+  ctx.stroke()
+
+  // Vertical side boundary lines extending up the visualizer
+  ctx.beginPath()
+  ctx.moveTo(bottomLeft.x, bottomLeft.y)
+  ctx.lineTo(topLeft.x, topLeft.y)
+  ctx.stroke()
+
+  ctx.beginPath()
+  ctx.moveTo(bottomRight.x, bottomRight.y)
+  ctx.lineTo(topRight.x, topRight.y)
+  ctx.stroke()
 
   ctx.restore()
 }

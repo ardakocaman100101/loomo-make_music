@@ -590,6 +590,7 @@ export class Player {
           this.checkProgressiveAdvance_(stop)
         }
         this.seek(start)
+        this.resetStats_()
         return
       }
     }
@@ -843,6 +844,15 @@ export class Player {
 
   getRange() {
     return this.range
+  }
+
+  skipToEnd() {
+    const range = this.store.get(this.range)
+    if (range) {
+      this.seek(range[1])
+    } else {
+      this.seek(this.getDuration())
+    }
   }
 
   /**

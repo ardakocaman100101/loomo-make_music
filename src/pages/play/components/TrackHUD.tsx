@@ -1,3 +1,4 @@
+import { LeftHand, RightHand } from '@/icons'
 import { Song, SongConfig } from '@/types'
 import { formatInstrumentName } from '@/utils'
 import clsx from 'clsx'
@@ -11,6 +12,7 @@ type TrackHUDProps = {
   onSolo?: (trackId: number) => void
   onTogglePractice: (trackId: number) => void
   onSoloPractice?: (trackId: number) => void
+  onSelectHand?: (trackId: number, hand: 'left' | 'right' | 'none') => void
 }
 
 export default function TrackHUD({
@@ -19,6 +21,7 @@ export default function TrackHUD({
   onToggleMute,
   onTogglePractice,
   onSoloPractice,
+  onSelectHand,
 }: Omit<TrackHUDProps, 'onSolo'>) {
   const clickTimerRef = useRef<Record<number, ReturnType<typeof setTimeout>>>({})
 
@@ -46,7 +49,7 @@ export default function TrackHUD({
   if (tracks.length <= 1) return null
 
   return (
-    <div className="pointer-events-auto flex max-h-[50vh] w-[232px] flex-col gap-2 overflow-y-auto rounded-[20px] border border-white/5 bg-black/45 p-3 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15),0_8px_32px_0_rgba(0,0,0,0.37)] backdrop-blur-xl">
+    <div className="pointer-events-auto flex max-h-[50vh] w-[260px] flex-col gap-2 overflow-y-auto rounded-[20px] border border-white/5 bg-black/45 p-3 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15),0_8px_32px_0_rgba(0,0,0,0.37)] backdrop-blur-xl">
       <div className="mb-3 text-center text-[12px] font-black tracking-[0.18em] text-[#6c79f0] uppercase select-none">
         TRACKS
       </div>
@@ -66,12 +69,32 @@ export default function TrackHUD({
           >
             <div className="flex items-center justify-between">
               <span
-                className="max-w-[140px] truncate text-xs font-bold text-white"
+                className="max-w-[110px] truncate text-xs font-bold text-white"
                 title={track.name}
               >
                 {track.name || formatInstrumentName(settings?.instrument || track.instrument)}
               </span>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => onSelectHand?.(id, 'left')}
+                  className={clsx(
+                    'rounded border-0 bg-transparent p-1 transition select-none',
+                    settings?.hand === 'left' ? 'text-[#6c79f0]' : 'text-white/35 hover:text-white',
+                  )}
+                  title="Assign Left Hand & Calculate Fingering"
+                >
+                  <LeftHand height={15} width={15} fill="currentColor" />
+                </button>
+                <button
+                  onClick={() => onSelectHand?.(id, 'right')}
+                  className={clsx(
+                    'rounded border-0 bg-transparent p-1 transition select-none',
+                    settings?.hand === 'right' ? 'text-[#6c79f0]' : 'text-white/35 hover:text-white',
+                  )}
+                  title="Assign Right Hand & Calculate Fingering"
+                >
+                  <RightHand height={15} width={15} fill="currentColor" />
+                </button>
                 <button
                   onClick={() => handleEyeClick(id)}
                   className={clsx(

@@ -211,16 +211,18 @@ function BentoGrid() {
             Plug your instrument and start playing
           </p>
         </motion.div>
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          className="flex flex-col items-center justify-center gap-6 rounded-3xl border border-white/10 bg-white/[0.05] p-8 text-center shadow-[0_8px_32px_0_rgba(0,0,0,0.2)] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2)] backdrop-blur-2xl"
-        >
-          <Cloud className="h-16 w-16 text-white" strokeWidth={2} />
-          <h3 className="text-3xl font-bold text-white">Studio</h3>
-          <p className="text-lg leading-relaxed text-white">
-            Edit, quantize and mix in loomo's simplified native DAW
-          </p>
-        </motion.div>
+        <Link to="/studio" className="block group">
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            className="flex flex-col items-center justify-center gap-6 rounded-3xl border border-white/10 bg-white/[0.05] p-8 text-center shadow-[0_8px_32px_0_rgba(0,0,0,0.2)] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2)] backdrop-blur-2xl cursor-pointer transition-all hover:border-[#6c79f0]/40 hover:bg-white/[0.08]"
+          >
+            <Cloud className="h-16 w-16 text-white transition-colors group-hover:text-[#6c79f0]" strokeWidth={2} />
+            <h3 className="text-3xl font-bold text-white">Studio</h3>
+            <p className="text-lg leading-relaxed text-white">
+              Edit, quantize and mix in loomo's simplified native DAW
+            </p>
+          </motion.div>
+        </Link>
       </div>
     </section>
   )

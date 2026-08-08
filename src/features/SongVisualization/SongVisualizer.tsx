@@ -83,15 +83,33 @@ function CanvasRenderer({
     render(state)
   }
 
+  const pointerDownPos = useRef<{ x: number; y: number } | null>(null)
+
   return (
     <div
       className="absolute h-full w-full touch-none"
       ref={measureRef}
       onPointerMove={(e) => enableTouchscroll && touchscroll.handleMove(player, e.nativeEvent)}
-      onPointerDown={(e) =>
-        enableTouchscroll && touchscroll.handleDown(player, e.nativeEvent, canvasRect)
-      }
-      onPointerUp={(e) => enableTouchscroll && touchscroll.handleUp(player, e.nativeEvent)}
+      onPointerDown={(e) => {
+        pointerDownPos.current = { x: e.clientX, y: e.clientY }
+        if (enableTouchscroll) {
+          touchscroll.handleDown(player, e.nativeEvent, canvasRect)
+        }
+      }}
+      onPointerUp={(e) => {
+        if (enableTouchscroll) {
+          touchscroll.handleUp(player, e.nativeEvent)
+        }
+        if (pointerDownPos.current) {
+          const dist = Math.hypot(
+            e.clientX - pointerDownPos.current.x,
+            e.clientY - pointerDownPos.current.y,
+          )
+          if (dist < 6 && player.store.get(player.range) !== null) {
+            player.setRange(undefined)
+          }
+        }
+      }}
     >
       <Canvas ref={canvasRef as LegacyRef<HTMLCanvasElement>} render={renderCanvas} />
     </div>

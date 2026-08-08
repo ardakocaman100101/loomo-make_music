@@ -1,18 +1,54 @@
+import { CoachingPayload, generateAICoachingAdvice } from '@/features/ai/coaching'
 import { usePlayer } from '@/features/player'
 import { sessionScoreHistory } from '@/features/player/scoring'
+import { detectPracticeSegmentAsync, PracticeSegment } from '@/features/theory/practice-detector'
+import { formatTime } from '@/utils'
 import { useAtomValue } from 'jotai'
-import { RotateCcw, Star, Trophy, X } from 'lucide-react'
-import React from 'react'
+import { Loader2, RotateCcw, Sparkles, Star, Target, Trophy, X } from 'lucide-react'
+import React, { useEffect, useState } from 'react'
 
 type CompletionModalProps = {
   isOpen: boolean
   onClose: () => void
   onReplay: () => void
+  onPracticeRecommended?: (segment: PracticeSegment) => void
 }
 
-export default function CompletionModal({ isOpen, onClose, onReplay }: CompletionModalProps) {
+export default function CompletionModal({
+  isOpen,
+  onClose,
+  onReplay,
+  onPracticeRecommended,
+}: CompletionModalProps) {
   const player = usePlayer()
   const song = player.getSong()
+
+  const [isCalculating, setIsCalculating] = useState(true)
+  const [recommendedSegment, setRecommendedSegment] = useState<PracticeSegment | null>(null)
+
+  const [isAiLoading, setIsAiLoading] = useState(true)
+  const [aiFeedback, setAiFeedback] = useState<string | null>(null)
+  const [displayedAiText, setDisplayedAiText] = useState('')
+
+  // Typewriter effect when aiFeedback arrives
+  useEffect(() => {
+    if (!aiFeedback) {
+      setDisplayedAiText('')
+      return
+    }
+
+    setDisplayedAiText('')
+    let idx = 0
+    const timer = setInterval(() => {
+      idx++
+      setDisplayedAiText(aiFeedback.slice(0, idx))
+      if (idx >= aiFeedback.length) {
+        clearInterval(timer)
+      }
+    }, 20)
+
+    return () => clearInterval(timer)
+  }, [aiFeedback])
 
   const accuracy = useAtomValue(player.score.accuracy)
   const perfect = useAtomValue(player.score.perfect)
@@ -20,6 +56,145 @@ export default function CompletionModal({ isOpen, onClose, onReplay }: Completio
   const late = useAtomValue(player.score.late)
   const miss = useAtomValue(player.score.miss)
   const streak = useAtomValue(player.score.streak)
+
+  // 1. Independent Practice Segment Detection Effect
+  useEffect(() => {
+    if (!isOpen || !song || !player) {
+      setIsCalculating(true)
+      setRecommendedSegment(null)
+      return
+    }
+
+    const abortController = new AbortController()
+    setIsCalculating(true)
+
+    const songDuration = player.getDuration()
+    detectPracticeSegmentAsync(song.notes, songDuration, abortController.signal)
+      .then((segment) => {
+        if (!abortController.signal.aborted) {
+          setRecommendedSegment(segment)
+          setIsCalculating(false)
+        }
+      })
+      .catch((err) => {
+        if (!abortController.signal.aborted) {
+          console.error('Failed to detect practice segment:', err)
+          setIsCalculating(false)
+        }
+      })
+
+    return () => {
+      // Instantly stop background calculation if user closes or dismisses modal
+      abortController.abort()
+    }
+  }, [isOpen, song, player])
+
+  // 2. Independent AI Coaching Generation Effect
+  useEffect(() => {
+    if (!isOpen || !song || !player) {
+      setIsAiLoading(true)
+      setAiFeedback(null)
+      return
+    }
+
+    const aiAbortController = new AbortController()
+    setIsAiLoading(true)
+
+    const songId = (song as any).id || (song as any).meta?.id || 'current_song'
+    const historyRecords = sessionScoreHistory.getRecordsForSong(songId)
+
+    // Calculate played note duration metrics for payload
+    const playedNotes = song.notes.filter((n) => n.durationScore !== undefined)
+    const currentDurationScore =
+      playedNotes.length > 0
+        ? Math.round(
+            (playedNotes.reduce((acc, n) => acc + (n.durationScore || 0), 0) / playedNotes.length) *
+              100,
+          )
+        : 0
+
+    let totalTG = 0
+    let totalTY = 0
+    let totalTP = 0
+    let totalTR = 0
+
+    if (playedNotes.length > 0) {
+      playedNotes.forEach((n) => {
+        if (n.userPressStart !== undefined) {
+          const tS = n.time
+          const tE = n.time + n.duration
+          const t1 = n.userPressStart
+          const t2 = n.userPressEnd ?? (n.time + n.duration)
+
+          totalTY += Math.max(0, tS - t1)
+          totalTP += Math.max(0, t1 - tS)
+          totalTR += Math.abs(t2 - tE)
+          totalTG += Math.max(0, Math.min(t2, tE) - Math.max(t1, tS))
+        }
+      })
+    }
+
+    const grandTotalDuration = totalTG + totalTY + totalTP + totalTR
+    const totalCount = Math.max(1, perfect + early + late + miss)
+    const pctG = grandTotalDuration > 0 ? Math.round((totalTG / grandTotalDuration) * 100) : Math.round((perfect / totalCount) * 100)
+    const pctY = grandTotalDuration > 0 ? Math.round((totalTY / grandTotalDuration) * 100) : Math.round((early / totalCount) * 100)
+    const pctP = grandTotalDuration > 0 ? Math.round((totalTP / grandTotalDuration) * 100) : Math.round((late / totalCount) * 100)
+    const pctR = grandTotalDuration > 0 ? Math.round((totalTR / grandTotalDuration) * 100) : Math.round((miss / totalCount) * 100)
+
+    const payload: CoachingPayload = {
+      sessionMeta: {
+        songTitle: (song as any).title || (song as any).meta?.title || 'Unknown Song',
+        difficulty: (song as any).difficulty || (song as any).meta?.difficulty || 'Medium',
+        duration: Math.round(player.getDuration()),
+        keySignature: String(song.keySignature || 'C'),
+        timeSignature: song.timeSignature || { numerator: 4, denominator: 4 },
+        bpm: Math.round(typeof player.currentBpm === 'number' ? player.currentBpm : 120),
+        playbackSpeed: (player as any).getPlaybackSpeed ? (player as any).getPlaybackSpeed() : 1.0,
+        activeTracks: Object.keys(song.tracks || {}).length > 1 ? 'Multiple Tracks' : 'Solo Track',
+      },
+      hitMetrics: {
+        accuracy,
+        streak,
+        perfect,
+        early,
+        late,
+        miss,
+      },
+      durationBreakdown: {
+        durationScore: currentDurationScore,
+        pctG,
+        pctY,
+        pctP,
+        pctR,
+      },
+      history: {
+        attemptCount: historyRecords.length + 1,
+        durationScoreTrend: [
+          ...historyRecords.map((r) => Math.round(r.averageDurationScore * 100)),
+          currentDurationScore,
+        ].slice(-6),
+      },
+    }
+
+    generateAICoachingAdvice(payload, aiAbortController.signal)
+      .then((advice) => {
+        if (!aiAbortController.signal.aborted) {
+          setAiFeedback(advice)
+          setIsAiLoading(false)
+        }
+      })
+      .catch((err) => {
+        if (!aiAbortController.signal.aborted) {
+          console.error('Failed generating AI coaching advice:', err)
+          setIsAiLoading(false)
+        }
+      })
+
+    return () => {
+      // Instantly cancel AI feedback generation if modal is closed
+      aiAbortController.abort()
+    }
+  }, [isOpen, song, player, accuracy, perfect, early, late, miss, streak])
 
   if (!isOpen || !song) return null
 
@@ -139,6 +314,29 @@ export default function CompletionModal({ isOpen, onClose, onReplay }: Completio
                 {currentDurationScore}%
               </span>
             </div>
+          </div>
+
+          {/* AI Teacher Feedback Card */}
+          <div className="flex flex-col rounded-2xl border border-indigo-200/80 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 p-3 shadow-xs">
+            <div className="mb-1 flex items-center gap-1.5 select-none">
+              <Sparkles className="h-4 w-4 text-[#6c79f0]" />
+              <span className="text-xs font-black tracking-wider text-[#6c79f0] uppercase">
+                AI Coach Advice
+              </span>
+            </div>
+            {isAiLoading ? (
+              <div className="flex h-7 w-full animate-pulse items-center gap-2 rounded-xl bg-gray-300/40 px-2.5">
+                <div className="h-2 w-3/4 rounded-full bg-gray-400/50" />
+                <div className="h-2 w-1/4 rounded-full bg-gray-400/30" />
+              </div>
+            ) : (
+              <p className="text-xs font-extrabold leading-relaxed text-gray-800">
+                {displayedAiText}
+                {displayedAiText.length < (aiFeedback?.length ?? 0) && (
+                  <span className="ml-0.5 inline-block h-3 w-0.5 animate-pulse bg-[#6c79f0] align-middle" />
+                )}
+              </p>
+            )}
           </div>
 
           {/* Continuous Duration Score Pill Bar */}
@@ -310,14 +508,39 @@ export default function CompletionModal({ isOpen, onClose, onReplay }: Completio
           </div>
         </div>
 
-        {/* 3. Replay Icon Button Only */}
-        <div className="flex shrink-0 items-center justify-center border-t border-gray-200/80 pt-2">
+        {/* 3. Footer Controls: Practice Recommended Part & Replay */}
+        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-gray-200/80 pt-3">
+          <button
+            disabled={isCalculating || !recommendedSegment}
+            onClick={() => {
+              if (recommendedSegment && onPracticeRecommended) {
+                onPracticeRecommended(recommendedSegment)
+              }
+            }}
+            className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#6c79f0] to-purple-600 px-4 py-2.5 text-xs font-extrabold text-white shadow-md shadow-[#6c79f0]/25 transition hover:scale-[1.02] active:scale-95 disabled:cursor-not-allowed disabled:opacity-75 sm:text-sm"
+          >
+            {isCalculating ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin text-white" />
+                <span>Detecting Practice Part...</span>
+              </>
+            ) : (
+              <>
+                <Target className="h-4 w-4 text-white" />
+                <span>
+                  Practice Recommended Part (
+                  {formatTime(recommendedSegment?.start ?? 0)} -{' '}
+                  {formatTime(recommendedSegment?.end ?? 0)})
+                </span>
+              </>
+            )}
+          </button>
           <button
             onClick={onReplay}
-            className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-gradient-to-r from-[#6c79f0] to-purple-600 text-white shadow-md shadow-[#6c79f0]/30 transition hover:scale-110 active:scale-95"
+            className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-2xl bg-gray-200/80 text-gray-700 transition hover:bg-gray-300 hover:text-gray-900 active:scale-95"
             title="Replay Song"
           >
-            <RotateCcw size={20} />
+            <RotateCcw size={18} />
           </button>
         </div>
 

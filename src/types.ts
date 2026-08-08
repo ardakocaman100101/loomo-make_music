@@ -63,6 +63,7 @@ export interface Track {
   instrument?: string
   name?: string
   program?: number
+  hand?: 'left' | 'right' | 'none'
 }
 
 export type SongMeasure = {

@@ -13,8 +13,8 @@ import { getSynthStub, InstrumentName, Synth } from '@/features/synth'
 import gmInstruments from '@/features/synth/instruments'
 import { predictSongFingerings } from '@/features/theory/fingering'
 import { useEventListener } from '@/hooks'
-import { Logo } from '@/icons'
-import type { Song, SongNote, SongSource, Track, Tracks } from '@/types'
+import { LeftHand, Logo, RightHand } from '@/icons'
+import type { Song, SongConfig, SongNote, SongSource, Track, Tracks } from '@/types'
 import { bytesToBase64 } from '@/utils'
 import * as idb from 'idb-keyval'
 import {
@@ -1453,6 +1453,62 @@ export default function Studio() {
     setSoloTracks(newSolo)
   }
 
+  const handleSelectTrackHand = async (trackId: number, hand: 'left' | 'right' | 'none') => {
+    const currentHand = tracks[trackId]?.hand
+    const newHand = currentHand === hand ? 'none' : hand
+    const newTracks = {
+      ...tracks,
+      [trackId]: { ...tracks[trackId], hand: newHand },
+    }
+    setTracks(newTracks)
+
+    if (notes.length > 0) {
+      try {
+        const maxTime = notes.reduce((max, n) => Math.max(max, n.time + n.duration), 0)
+        const tempSong: Song = {
+          tracks: Object.entries(newTracks).reduce((acc, [idStr, t]: [string, any]) => {
+            acc[Number(idStr)] = { name: t.name, instrument: t.instrument, program: t.program }
+            return acc
+          }, {} as any),
+          duration: maxTime,
+          measures: [],
+          notes,
+          bpms: [{ time: 0, bpm }],
+          keySignature: 'C',
+          items: [],
+          ppq: 480,
+          secondsToTicks: (s) => s * 2,
+          ticksToSeconds: (t) => t / 2,
+        }
+        const songConfig: SongConfig = {
+          left: true,
+          right: true,
+          waiting: false,
+          visualization: 'falling-notes',
+          noteLabels: 'none',
+          coloredNotes: true,
+          skipMissedNotes: false,
+          tracks: Object.entries(newTracks).reduce((acc, [idStr, t]: [string, any]) => {
+            acc[Number(idStr)] = {
+              track: t,
+              hand: t.hand ?? 'none',
+              practice: true,
+              sound: true,
+              instrument: (t.instrument as any) || 'acoustic_grand_piano',
+            }
+            return acc
+          }, {} as any),
+        }
+        const updatedSong = await predictSongFingerings(tempSong, songConfig)
+        if (updatedSong.notes) {
+          setNotes(updatedSong.notes)
+        }
+      } catch (e) {
+        console.error('Failed predicting fingerings for track hand:', e)
+      }
+    }
+  }
+
   // Open only the specified track as a standalone single-track MIDI file in Play mode
   const handlePlaySingleTrack = (trackId: number) => {
     stopPlayback()
@@ -1907,6 +1963,41 @@ export default function Studio() {
                           value={(track.instrument as InstrumentName) || 'acoustic_grand_piano'}
                           onSelect={(inst) => updateTrackInstrument(trackId, inst)}
                         />
+                      </div>
+
+                      {/* Hand Assignment & Fingering Control */}
+                      <div className="mb-2.5 flex items-center justify-between border-t border-white/10 pt-2.5">
+                        <span className="text-xs font-extrabold text-white/60">Hand</span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleSelectTrackHand(trackId, 'left')
+                            }}
+                            className={`flex h-8 w-8 cursor-pointer items-center justify-center rounded-xl border transition-all select-none overflow-hidden ${
+                              track.hand === 'left'
+                                ? 'border-[#9ba4ff] bg-[#6c79f0] text-white shadow-[0_0_12px_rgba(108,121,240,0.4)]'
+                                : 'border-white/15 bg-white/10 text-white/60 hover:bg-white/20 hover:text-white'
+                            }`}
+                            title="Assign Left Hand"
+                          >
+                            <LeftHand height={22} width={22} fill="currentColor" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleSelectTrackHand(trackId, 'right')
+                            }}
+                            className={`flex h-8 w-8 cursor-pointer items-center justify-center rounded-xl border transition-all select-none overflow-hidden ${
+                              track.hand === 'right'
+                                ? 'border-[#9ba4ff] bg-[#6c79f0] text-white shadow-[0_0_12px_rgba(108,121,240,0.4)]'
+                                : 'border-white/15 bg-white/10 text-white/60 hover:bg-white/20 hover:text-white'
+                            }`}
+                            title="Assign Right Hand"
+                          >
+                            <RightHand height={22} width={22} fill="currentColor" />
+                          </button>
+                        </div>
                       </div>
 
                       {/* Mute/Solo/Play controls - Modernized 3-column equal grid layout with high-readability font sizing */}

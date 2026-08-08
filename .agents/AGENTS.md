@@ -38,11 +38,36 @@ When interacting with Notion for task management, bug tracking, roadmaps, or fea
 
 ---
 
-## Agent Instructions for loomo Development
+## Value & Severity Effort Scaling Rules for All Agents
 
-1. **Context Alignment:**
-   Keep loomo task updates, bug resolutions, and roadmaps aligned between the codebase and the corresponding Notion databases listed above.
-2. **Ticket Referencing:**
-   When completing a task or fixing a bug, retrieve it from the **TODOs** or **Bugs** databases and update its status appropriately via the `notion-update-page` tool.
-3. **No External Workspaces:**
-   Limit Notion read/write activities exclusively to the loomo project hierarchy mapped above. Do not reference, search, or write to databases outside of this structure.
+All agents MUST adapt their thinking depth, token expenditure, and execution effort based on the ticket's **Value** property (for Tasks/Features) or **Severity** property (for Bugs):
+
+1. **`Value = Low` or `Severity = Low` (Maximum Token Efficiency & Speed):**
+   - Simple & easy tasks/bugs. No deep overthinking or heavy token spend.
+   - **PM:** Description, requirements/bug details, and test steps must be **at most 1 short sentence** each. Minimal to no questions.
+   - **Figma:** 1-2 sentence UI/layout or token adjustment note. Wrap up fast.
+   - **Developer:** Minimal code edit, quick fix, wrap up immediately. Implementation notes must be at most 1 short sentence.
+   - **Tester:** Quick single browser check, 1-line QA table row, wrap up fast.
+
+2. **`Value = Medium` or `Severity = Medium` (Balanced Integration & Proper Implementation):**
+   - Standard tasks/bugs requiring proper attention to integration and clean implementation.
+   - **PM:** Clear, concise requirements ensuring the feature/fix integrates properly without breaking adjacent UI/state.
+   - **Figma:** Clean component UI/UX specs, token mapping, layout structure, and essential interaction states.
+   - **Developer:** Clean implementation focusing on proper component integration and state handling.
+   - **Tester:** Standard browser test execution covering main user flow and integration points.
+
+3. **`Value = High` or `Severity = High` (Deep Systemic Architecture & Thorough Testing):**
+   - Critical system features / high-severity bugs requiring multi-perspective analysis and thorough execution.
+   - **PM:** Ask targeted questions to clarify design/behavior; write holistic requirements considering the entire DAW/music system.
+   - **Figma:** Comprehensive design architecture, responsive breakpoints, audio DAW aesthetic standards, micro-interactions, and accessibility.
+   - **Developer:** Design carefully as a system architecture (not a quick patch), considering root causes, performance, error handling, and clean modularity.
+   - **Tester:** Deep edge-case testing within full app context (track solos, loop bounds, audio context resume, MIDI inputs, visual state).
+
+---
+
+## Universal Ticket Writing Rules for All Agents
+
+1. **Short But Clear:** Write all ticket content in short, clear, and direct sentences. Zero fluff.
+2. **In-Place Edits (No Update Section Accumulation):** Do **NOT** append new "Update #1", "Update #2", or separate "Update" headers every time new info is added. Update existing sections directly in place.
+3. **Context Alignment:** Keep loomo task updates, bug resolutions, and roadmaps aligned between the codebase and the corresponding Notion databases listed above.
+4. **No External Workspaces:** Limit Notion read/write activities exclusively to the loomo project hierarchy mapped above.
