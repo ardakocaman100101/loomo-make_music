@@ -1,6 +1,5 @@
 import { Outlet, useLocation } from 'react-router'
 import AppBar from './AppBar'
-import { MarketingFooter } from './MarketingFooter'
 
 export default function MainLayout() {
   const location = useLocation()
@@ -12,7 +11,6 @@ export default function MainLayout() {
       <main className="flex-1">
         <Outlet />
       </main>
-      {!isHome && <MarketingFooter />}
     </div>
   )
 }

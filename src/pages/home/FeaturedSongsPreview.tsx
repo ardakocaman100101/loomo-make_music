@@ -36,7 +36,7 @@ export function FeaturedSongsPreview({ marginTop }: { marginTop: number }) {
     <div
       className={clsx(
         'relative h-[300px] w-3/4 max-w-[760px] self-center',
-        'bg-gray-[#2e2e2e] overflow-hidden rounded-lg',
+        'bg-[#1A1D2D] overflow-hidden rounded-lg',
         'shadow-xl',
       )}
       style={{ minWidth: 'min(100vw - 40px, 400px)', marginTop }}

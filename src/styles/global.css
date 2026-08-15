@@ -70,6 +70,14 @@
   color utility to any element that depends on these defaults.
 */
 @layer base {
+  html,
+  body {
+    background-color: #101223;
+    color: #F4F5F8;
+    min-height: 100%;
+    overflow-x: hidden;
+  }
+
   *,
   ::after,
   ::before,
@@ -80,6 +88,7 @@
 }
 
 @layer utilities {
+
   /* Music font stuff */
   @font-face {
     font-family: Leland;
@@ -92,7 +101,7 @@
     opacity: 0.4;
     filter: blur(80px);
   }
-  
+
   .glass-card {
     background: rgba(42, 42, 42, 0.4);
     backdrop-filter: blur(12px);

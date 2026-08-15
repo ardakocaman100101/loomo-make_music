@@ -6,7 +6,7 @@ import { Providers } from './providers'
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark bg-[#101223] text-[#F4F5F8]">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -37,6 +37,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <link rel="icon" href="/favicon.png" />
         <link rel="apple-touch-icon" href="/favicon.png" />
 
+        {/* Typography Fonts: Inter & Space Grotesk */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700;800;900&display=swap"
+          rel="stylesheet"
+        />
+
         {/* Global Site Tag (gtag.js) - Google Analytics */}
         <script defer src={`https://www.googletagmanager.com/gtag/js?id=${GA_TRACKING_ID}`} />
         <script
@@ -54,7 +62,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {/* Manually inserted styles */}
         <style dangerouslySetInnerHTML={{ __html: styles }} />
       </head>
-      <body>
+      <body className="min-h-screen bg-[#101223] text-[#F4F5F8] overflow-x-hidden">
         {children}
         <ScrollRestoration />
         <Scripts />
