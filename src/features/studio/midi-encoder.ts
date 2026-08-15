@@ -1,14 +1,14 @@
 import type { Song } from '@/types'
-import * as tonejs from '@tonejs/midi'
+import { Midi } from '@tonejs/midi'
 
 /**
- * Encodes a Loomo Song object back into standard MIDI binary data (Uint8Array).
+ * Encodes a loomo Song object back into standard MIDI binary data (Uint8Array).
  */
 export function songToMidiBytes(song: Partial<Song>): Uint8Array {
-  const midi = new tonejs.Midi()
+  const midi = new Midi()
 
   // 1. Set name
-  midi.name = 'Loomo Studio Session'
+  midi.name = 'loomo Studio Session'
 
   // 2. Set Tempos (BPMs)
   if (song.bpms && song.bpms.length > 0) {

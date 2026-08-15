@@ -424,7 +424,7 @@ export default function CompletionModal({
             </div>
           </div>
 
-          {/* Modern Loomo Point Graph Session Duration History */}
+          {/* Modern loomo Point Graph Session Duration History */}
           <div className="flex flex-col rounded-2xl bg-gray-200/50 p-2.5 shadow-inner">
             <div className="mb-1 flex items-center justify-between">
               <span className="text-[11px] font-extrabold tracking-[0.12em] text-gray-600 select-none">
@@ -438,18 +438,18 @@ export default function CompletionModal({
               </div>
             </div>
 
-            {/* SVG Point Graph with Dashed Lines & Loomo Bright Gradient Fill */}
+            {/* SVG Point Graph with Dashed Lines & loomo Bright Gradient Fill */}
             <div className="relative h-20 w-full">
               <svg className="h-full w-full overflow-visible" viewBox="0 0 400 75" preserveAspectRatio="none">
                 <defs>
-                  {/* Bright Loomo Gradient Fill under connecting lines */}
+                  {/* Bright loomo Gradient Fill under connecting lines */}
                   <linearGradient id="loomoAreaGradient" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#6c79f0" stopOpacity="0.45" />
                     <stop offset="100%" stopColor="#6c79f0" stopOpacity="0.02" />
                   </linearGradient>
                 </defs>
 
-                {/* Bright Loomo Fill under connecting line */}
+                {/* Bright loomo Fill under connecting line */}
                 <path d={areaPathD} fill="url(#loomoAreaGradient)" />
 
                 {/* Vertical Dashed Drop Lines under each point */}

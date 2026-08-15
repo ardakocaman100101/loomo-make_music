@@ -162,7 +162,7 @@ export async function drawPianoRoll(
     if (activeFingerings?.has(+midiNote)) {
       const finger = activeFingerings.get(+midiNote)
       const fingerTxt = String(finger)
-      ctx.fillStyle = 'rgba(108, 121, 240, 0.45)' // Loomo blue at 45% opacity
+      ctx.fillStyle = 'rgba(108, 121, 240, 0.45)' // loomo blue at 45% opacity
       ctx.font = `bold ${width * 0.35}px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace`
       const { width: fingerWidth } = ctx.measureText(fingerTxt)
       ctx.textBaseline = 'top'

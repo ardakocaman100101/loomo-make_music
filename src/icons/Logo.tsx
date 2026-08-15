@@ -12,7 +12,7 @@ export default function Logo(props: LucideProps) {
         src="/loomo_logo.png?v=9"
         className="h-full w-full object-contain"
         style={{ imageRendering: 'auto' }}
-        alt="Loomo Logo"
+        alt="loomo logo"
       />
     </div>
   )

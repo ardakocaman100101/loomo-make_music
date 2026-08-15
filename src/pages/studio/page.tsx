@@ -1688,7 +1688,7 @@ export default function Studio() {
         {/* 1. Left Zone: Enlarged Track Identity ON TOP, Media Player DIRECTLY UNDERNEATH */}
         <div className="flex min-w-[320px] flex-1 items-center">
           <div className="flex h-32 w-full flex-col justify-between py-0.5">
-            {/* Top Row: Enlarged Back Button, Loomo Logo & Track Name */}
+            {/* Top Row: Enlarged Back Button, loomo Logo & Track Name */}
             <div className="flex items-center gap-4">
               <button
                 onClick={() => {

@@ -1,13 +1,8 @@
-import { Outlet, useLocation } from 'react-router'
-import AppBar from './AppBar'
+import { Outlet } from 'react-router'
 
 export default function MainLayout() {
-  const location = useLocation()
-  const isHome = location.pathname === '/'
-
   return (
-    <div className="flex min-h-screen flex-col bg-white dark:bg-black">
-      {!isHome && <AppBar />}
+    <div className="flex min-h-screen flex-col">
       <main className="flex-1">
         <Outlet />
       </main>

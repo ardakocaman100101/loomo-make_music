@@ -66,7 +66,7 @@ export async function predictSongFingerings(song: Song, config?: SongConfig): Pr
   try {
     const models = await loadFingeringModels()
 
-    // Map Loomo notes to model format
+    // Map loomo notes to model format
     const modelNotes: ModelNote[] = song.notes.map((note) => {
       const left = determineIsLeftHand(note, config)
       return {

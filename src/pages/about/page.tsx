@@ -316,14 +316,14 @@ function Navbar({
 }) {
   return (
     <nav
-      className={`fixed top-0 z-50 w-full border-b backdrop-blur-2xl transition-colors duration-500 ${
+      className={`fixed top-0 z-50 w-full backdrop-blur-2xl transition-colors duration-500 ${
         isDarkMode
-          ? 'border-white/[0.06] bg-[#101223]/85 shadow-[0_8px_32px_0_rgba(0,0,0,0.4)]'
-          : 'border-[#24273A]/[0.06] bg-[#F6F7FB]/85 shadow-[0_8px_30px_0_rgba(36,39,58,0.03)]'
+          ? 'border-b border-white/[0.06] bg-[#101223]/85 shadow-[0_8px_32px_0_rgba(0,0,0,0.4)]'
+          : 'border-b border-black/[0.05] bg-[#F6F7FB]/85 shadow-[0_8px_30px_0_rgba(36,39,58,0.03)]'
       }`}
     >
       <div className="mx-auto flex h-22 w-full max-w-7xl items-center justify-between px-4 sm:px-6">
-        {/* Left: Loomo Logo + Wordmark */}
+        {/* Left: loomo Logo + Wordmark */}
         <div className="flex items-center">
           <Link to="/" className="group flex items-center gap-3.5 transition-opacity hover:opacity-90">
             <Logo
