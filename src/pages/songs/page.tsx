@@ -1,11 +1,16 @@
 import { UploadMidi } from '@/components'
 import { useSongManifest } from '@/features/data/library'
+import { getUploadedSong } from '@/features/persist/persistence'
+import Storage from '@/features/persist/storage'
 import { Logo } from '@/icons'
-import { SongMetadata } from '@/types'
+import { SongMetadata, Tracks } from '@/types'
 import { formatTime } from '@/utils'
+import * as idb from 'idb-keyval'
 import {
   ArrowRight,
+  AudioWaveform,
   Check,
+  ChevronDown,
   ChevronRight,
   Filter,
   Home as HomeIcon,
@@ -39,6 +44,11 @@ const PRESET_FILTERS = [
 
 type PresetFilter = (typeof PRESET_FILTERS)[number]
 
+interface TrackInfo {
+  id: number
+  name: string
+}
+
 function getSongGenre(song: SongMetadata): string {
   const t = (song.title || '').toLowerCase()
   if (t.includes('chiptune') || t.includes('8-bit') || t.includes('mario') || t.includes('zelda') || t.includes('tetris')) {
@@ -62,8 +72,9 @@ function getSongGenre(song: SongMetadata): string {
   return 'Classical'
 }
 
-function getSongDetails(song: SongMetadata) {
-  const parts = (song.title || '').split(' - ')
+function getSongDetails(song: SongMetadata, customTitle?: string) {
+  const effectiveTitle = customTitle || song.title || 'Untitled Song'
+  const parts = effectiveTitle.split(' - ')
   if (parts.length >= 2) {
     return {
       title: parts[0].trim(),
@@ -72,7 +83,7 @@ function getSongDetails(song: SongMetadata) {
     }
   }
   return {
-    title: song.title || 'Untitled Song',
+    title: effectiveTitle,
     artist: song.source === 'upload' ? 'User Upload' : 'loomo library',
     genre: getSongGenre(song),
   }
@@ -84,6 +95,25 @@ export default function LibraryPage() {
   const [isDarkMode, setIsDarkMode] = useState(true)
   const [search, setSearch] = useState('')
   const [activeFilters, setActiveFilters] = useState<Set<PresetFilter>>(new Set())
+
+  // Track Unpacking & Persistent Custom Names State
+  const [expandedSongIds, setExpandedSongIds] = useState<Set<string>>(new Set())
+  const [songTracksMap, setSongTracksMap] = useState<Map<string, TrackInfo[]>>(new Map())
+  const [customTitles, setCustomTitles] = useState<Record<string, string>>(() => {
+    return Storage.get<Record<string, string>>('loomo_custom_titles') || {}
+  })
+  const [customTrackNames, setCustomTrackNames] = useState<Record<string, Record<number, string>>>(() => {
+    return Storage.get<Record<string, Record<number, string>>>('loomo_custom_track_names') || {}
+  })
+  const [customTagsMap, setCustomTagsMap] = useState<Record<string, string[]>>(() => {
+    return Storage.get<Record<string, string[]>>('loomo_custom_tags') || {}
+  })
+
+  // Inline Renaming State
+  const [editingTitleId, setEditingTitleId] = useState<string | null>(null)
+  const [editingTitleText, setEditingTitleText] = useState('')
+  const [editingTrack, setEditingTrack] = useState<{ songId: string; trackId: number } | null>(null)
+  const [editingTrackText, setEditingTrackText] = useState('')
 
   // Sync document root background with current theme
   useEffect(() => {
@@ -98,6 +128,33 @@ export default function LibraryPage() {
     }
   }, [isDarkMode])
 
+  // Load track info for songs to determine if multi-track (unpackable)
+  useEffect(() => {
+    let isMounted = true
+    async function loadTracks() {
+      const map = new Map<string, TrackInfo[]>()
+      for (const song of rawSongs) {
+        try {
+          const cached = await getUploadedSong(song.id)
+          if (cached && cached.tracks) {
+            const tracks: TrackInfo[] = Object.entries(cached.tracks).map(([tid, t]) => ({
+              id: Number(tid),
+              name: t.name || `Track ${tid}`,
+            }))
+            map.set(song.id, tracks)
+          }
+        } catch (_) {}
+      }
+      if (isMounted) {
+        setSongTracksMap(map)
+      }
+    }
+    loadTracks()
+    return () => {
+      isMounted = false
+    }
+  }, [rawSongs])
+
   const toggleFilter = (filter: PresetFilter) => {
     setActiveFilters((prev) => {
       const next = new Set(prev)
@@ -110,18 +167,84 @@ export default function LibraryPage() {
     })
   }
 
+  const toggleExpand = (songId: string, isMultiTrack: boolean) => {
+    if (!isMultiTrack) return
+    setExpandedSongIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(songId)) {
+        next.delete(songId)
+      } else {
+        next.add(songId)
+      }
+      return next
+    })
+  }
+
+  // Double-Click Title Renaming Handlers
+  const handleStartEditingTitle = (songId: string, currentTitle: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setEditingTitleId(songId)
+    setEditingTitleText(currentTitle)
+  }
+
+  const handleSaveTitle = async (songId: string) => {
+    const trimmed = editingTitleText.trim()
+    if (trimmed) {
+      const updated = { ...customTitles, [songId]: trimmed }
+      setCustomTitles(updated)
+      Storage.set('loomo_custom_titles', updated)
+    }
+    setEditingTitleId(null)
+  }
+
+  // Double-Click Track Renaming Handlers
+  const handleStartEditingTrack = (
+    songId: string,
+    trackId: number,
+    currentName: string,
+    e: React.MouseEvent,
+  ) => {
+    e.stopPropagation()
+    setEditingTrack({ songId, trackId })
+    setEditingTrackText(currentName)
+  }
+
+  const handleSaveTrack = async (songId: string, trackId: number) => {
+    const trimmed = editingTrackText.trim()
+    if (trimmed) {
+      const songCustomTracks = { ...(customTrackNames[songId] || {}), [trackId]: trimmed }
+      const updated = { ...customTrackNames, [songId]: songCustomTracks }
+      setCustomTrackNames(updated)
+      Storage.set('loomo_custom_track_names', updated)
+
+      // Also persist back to SONG_DATA in IndexedDB if available
+      try {
+        const cached = await getUploadedSong(songId)
+        if (cached && cached.tracks && cached.tracks[trackId]) {
+          cached.tracks[trackId].name = trimmed
+          await idb.set(`SONG_DATA_${songId}`, cached)
+          Storage.set(songId, cached)
+        }
+      } catch (_) {}
+    }
+    setEditingTrack(null)
+  }
+
   // Filter songs based on search query and active preset chips
   const filteredSongs = useMemo(() => {
     return rawSongs.filter((song) => {
-      const { title, artist, genre } = getSongDetails(song)
+      const customTitle = customTitles[song.id]
+      const songTags = (customTagsMap[song.id] || []).map((t) => t.toLowerCase())
+      const { title, artist, genre } = getSongDetails(song, customTitle)
       const q = search.trim().toLowerCase()
 
-      // Search matching
+      // Search matching (Title, Artist, Genre, Tags)
       if (q) {
         const matchesTitle = title.toLowerCase().includes(q)
         const matchesArtist = artist.toLowerCase().includes(q)
         const matchesGenre = genre.toLowerCase().includes(q)
-        if (!matchesTitle && !matchesArtist && !matchesGenre) {
+        const matchesTag = songTags.some((t) => t.includes(q))
+        if (!matchesTitle && !matchesArtist && !matchesGenre && !matchesTag) {
           return false
         }
       }
@@ -129,17 +252,20 @@ export default function LibraryPage() {
       // Filter chips matching
       if (activeFilters.size > 0) {
         for (const filter of activeFilters) {
+          const filterLower = filter.toLowerCase()
+          const hasTag = songTags.includes(filterLower)
+
           if (filter === 'Under 1 min') {
-            if ((song.duration || 0) > 60) return false
+            if (!hasTag && (song.duration || 0) > 60) return false
           } else if (filter === 'Beginner friendly') {
             const isBeginner = (song.difficulty && song.difficulty <= 2) || (song.duration || 0) <= 150
-            if (!isBeginner) return false
+            if (!hasTag && !isBeginner) return false
           } else if (filter === 'Covers') {
             const isCover = (song.title || '').toLowerCase().includes('cover')
-            if (!isCover) return false
+            if (!hasTag && !isCover) return false
           } else {
-            // Genre filters
-            if (genre.toLowerCase() !== filter.toLowerCase()) {
+            // Genre / preset filters
+            if (!hasTag && genre.toLowerCase() !== filterLower) {
               return false
             }
           }
@@ -148,7 +274,7 @@ export default function LibraryPage() {
 
       return true
     })
-  }, [rawSongs, search, activeFilters])
+  }, [rawSongs, search, activeFilters, customTitles, customTagsMap])
 
   return (
     <div
@@ -300,13 +426,18 @@ export default function LibraryPage() {
           </div>
         </div>
 
-        {/* 4. Modern Card-Based Song List */}
+        {/* 4. Modern Card-Based Song List with Track Unpacking */}
         <div className="relative z-10 mx-auto mt-8 w-full max-w-5xl space-y-4">
           <AnimatePresence mode="popLayout">
             {filteredSongs.length > 0 ? (
               filteredSongs.map((song, index) => {
-                const { title, artist, genre } = getSongDetails(song)
+                const customTitle = customTitles[song.id]
+                const { title, artist, genre } = getSongDetails(song, customTitle)
                 const durationFormatted = song.duration ? formatTime(song.duration) : '--:--'
+
+                const tracks = songTracksMap.get(song.id) || []
+                const isMultiTrack = tracks.length > 1
+                const isExpanded = expandedSongIds.has(song.id)
 
                 return (
                   <motion.div
@@ -315,107 +446,252 @@ export default function LibraryPage() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.98 }}
                     transition={{ duration: 0.3, delay: Math.min(index * 0.04, 0.3) }}
-                    className={`group relative flex flex-col justify-between gap-4 rounded-[26px] p-5 transition-all duration-300 sm:flex-row sm:items-center md:px-8 md:py-5.5 ${
+                    onClick={() => toggleExpand(song.id, isMultiTrack)}
+                    className={`group relative flex flex-col rounded-[26px] p-5 transition-all duration-300 md:px-8 md:py-5.5 ${
+                      isMultiTrack ? 'cursor-pointer' : ''
+                    } ${
                       isDarkMode
                         ? 'border border-white/[0.08] bg-[#1F1936]/70 shadow-[0px_24px_60px_-30px_rgba(0,0,0,0.9)] hover:border-[#8C49F4]/40 hover:bg-[#251E42]/80'
                         : 'border border-[#1B1630]/[0.08] bg-white/75 backdrop-blur-2xl shadow-[0_12px_40px_rgba(27,22,48,0.04)] hover:border-[#843EEA]/30 hover:bg-white/95'
                     }`}
                   >
-                    {/* Left: Song Title & Artist Attribution */}
-                    <div className="flex items-center gap-4 min-w-0 flex-1">
-                      <div
-                        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition-colors ${
-                          isDarkMode
-                            ? 'bg-[#8C49F4]/15 text-[#8C49F4] group-hover:bg-[#8C49F4]/25'
-                            : 'bg-[#843EEA]/10 text-[#843EEA] group-hover:bg-[#843EEA]/15'
-                        }`}
-                      >
-                        <Music className="h-6 w-6" />
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <h3
-                          className={`font-['Space_Grotesk',sans-serif] text-lg font-bold tracking-tight truncate transition-colors sm:text-xl ${
-                            isDarkMode ? 'text-[#F5F5F8]' : 'text-[#1B1630]'
+                    {/* Top Row: Song Header */}
+                    <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+                      {/* Left: Icon + Title & Artist Attribution */}
+                      <div className="flex items-center gap-4 min-w-0 flex-1">
+                        <div
+                          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition-colors ${
+                            isDarkMode
+                              ? 'bg-[#8C49F4]/15 text-[#8C49F4] group-hover:bg-[#8C49F4]/25'
+                              : 'bg-[#843EEA]/10 text-[#843EEA] group-hover:bg-[#843EEA]/15'
                           }`}
                         >
-                          {title}
-                        </h3>
-                        <p
-                          className={`text-sm truncate transition-colors ${
+                          <Music className="h-6 w-6" />
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            {editingTitleId === song.id ? (
+                              <input
+                                autoFocus
+                                type="text"
+                                value={editingTitleText}
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={(e) => setEditingTitleText(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleSaveTitle(song.id)
+                                  if (e.key === 'Escape') setEditingTitleId(null)
+                                }}
+                                onBlur={() => handleSaveTitle(song.id)}
+                                className={`rounded-lg border px-2 py-0.5 text-base font-bold outline-none sm:text-lg ${
+                                  isDarkMode
+                                    ? 'border-[#8C49F4] bg-[#120D24] text-white'
+                                    : 'border-[#843EEA] bg-white text-[#1B1630]'
+                                }`}
+                              />
+                            ) : (
+                              <h3
+                                onDoubleClick={(e) => handleStartEditingTitle(song.id, title, e)}
+                                title="Double-click to rename song"
+                                className={`font-['Space_Grotesk',sans-serif] text-lg font-bold tracking-tight truncate transition-colors sm:text-xl select-none ${
+                                  isDarkMode ? 'text-[#F5F5F8]' : 'text-[#1B1630]'
+                                }`}
+                              >
+                                {title}
+                              </h3>
+                            )}
+
+                            {/* Multi-Track Indicator Arrow */}
+                            {isMultiTrack && (
+                              <span
+                                className={`inline-flex items-center text-xs font-semibold ${
+                                  isDarkMode ? 'text-[#AE8DFC]' : 'text-[#6E61EA]'
+                                }`}
+                              >
+                                {isExpanded ? (
+                                  <ChevronDown className="h-4 w-4 transition-transform duration-200" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4 transition-transform duration-200" />
+                                )}
+                              </span>
+                            )}
+                          </div>
+
+                          <p
+                            className={`text-sm truncate transition-colors ${
+                              isDarkMode ? 'text-[#9D9CB1]' : 'text-[#636073]'
+                            }`}
+                          >
+                            {artist}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Middle & Right: Song Tags / Genre Badges, Duration & Actions */}
+                      <div className="flex items-center gap-4 sm:gap-6 shrink-0 justify-between sm:justify-end">
+                        {/* Attached Song Tags or Fallback Genre Tag Pill */}
+                        {(customTagsMap[song.id] || []).length > 0 ? (
+                          <div className="flex flex-wrap items-center gap-1.5 max-w-[220px]">
+                            {(customTagsMap[song.id] || []).map((tag) => (
+                              <span
+                                key={tag}
+                                className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold tracking-wide truncate max-w-[130px] ${
+                                  isDarkMode
+                                    ? 'border-[#AE8DFC]/30 bg-[#AE8DFC]/10 text-[#AE8DFC]'
+                                    : 'border-[#8C49F4]/30 bg-[#8C49F4]/10 text-[#8C49F4]'
+                                }`}
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span
+                            className={`rounded-full border px-3.5 py-1 text-xs font-semibold tracking-wide ${
+                              genre === 'Chiptune'
+                                ? isDarkMode
+                                  ? 'border-[#AE8DFC]/30 bg-[#AE8DFC]/10 text-[#AE8DFC]'
+                                  : 'border-[#8C49F4]/30 bg-[#8C49F4]/10 text-[#8C49F4]'
+                                : genre === 'Jazz'
+                                ? isDarkMode
+                                  ? 'border-amber-400/30 bg-amber-400/10 text-amber-300'
+                                  : 'border-amber-600/30 bg-amber-600/10 text-amber-700'
+                                : genre === 'Electronic'
+                                ? isDarkMode
+                                  ? 'border-cyan-400/30 bg-cyan-400/10 text-cyan-300'
+                                  : 'border-cyan-600/30 bg-cyan-600/10 text-cyan-700'
+                                : isDarkMode
+                                ? 'border-purple-400/30 bg-purple-400/10 text-purple-300'
+                                : 'border-purple-600/30 bg-purple-600/10 text-purple-700'
+                            }`}
+                          >
+                            {genre}
+                          </span>
+                        )}
+
+                        {/* Length / Duration in Monospace */}
+                        <span
+                          className={`font-mono text-sm font-medium ${
                             isDarkMode ? 'text-[#9D9CB1]' : 'text-[#636073]'
                           }`}
                         >
-                          {artist}
-                        </p>
+                          {durationFormatted}
+                        </span>
+
+                        {/* Action Buttons: [Play] [Studio] */}
+                        <div className="flex items-center gap-2.5">
+                          {/* Play Button (50x50px Primary Purple) */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              navigate(`/play?id=${song.id}&source=${song.source || 'local'}`)
+                            }}
+                            className="flex h-[48px] w-[48px] cursor-pointer items-center justify-center rounded-full bg-[#8C49F4] text-white shadow-[0_0_28px_-6px_rgba(140,73,244,0.65)] transition-all hover:scale-105 hover:bg-[#9B5CF6] hover:shadow-[0_0_35px_-4px_rgba(140,73,244,0.8)] active:scale-95 md:h-[50px] md:w-[50px]"
+                            title="Play Song"
+                          >
+                            <Play className="ml-0.5 h-5 w-5 fill-current text-white" />
+                          </button>
+
+                          {/* Studio Button (50x50px Glass Border) */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              navigate(`/studio?id=${song.id}&source=${song.source || 'local'}`)
+                            }}
+                            className={`flex h-[48px] w-[48px] cursor-pointer items-center justify-center rounded-full border transition-all hover:scale-105 active:scale-95 md:h-[50px] md:w-[50px] ${
+                              isDarkMode
+                                ? 'border-white/10 bg-[#120D24]/60 text-[#F5F5F8] hover:border-[#8C49F4]/50 hover:bg-[#8C49F4]/15'
+                                : 'border-[#1B1630]/[0.1] bg-[#F8F8FE]/80 text-[#1B1630] hover:border-[#843EEA]/40 hover:bg-[#843EEA]/10'
+                            }`}
+                            title="Open in Studio"
+                          >
+                            <Sliders className="h-5 w-5" />
+                          </button>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Middle: Genre Badge & Duration */}
-                    <div className="flex items-center gap-4 sm:gap-6 shrink-0 justify-between sm:justify-end">
-                      {/* Genre Tag Pill */}
-                      <span
-                        className={`rounded-full border px-3.5 py-1 text-xs font-semibold tracking-wide ${
-                          genre === 'Chiptune'
-                            ? isDarkMode
-                              ? 'border-[#AE8DFC]/30 bg-[#AE8DFC]/10 text-[#AE8DFC]'
-                              : 'border-[#8C49F4]/30 bg-[#8C49F4]/10 text-[#8C49F4]'
-                            : genre === 'Jazz'
-                            ? isDarkMode
-                              ? 'border-amber-400/30 bg-amber-400/10 text-amber-300'
-                              : 'border-amber-600/30 bg-amber-600/10 text-amber-700'
-                            : genre === 'Electronic'
-                            ? isDarkMode
-                              ? 'border-cyan-400/30 bg-cyan-400/10 text-cyan-300'
-                              : 'border-cyan-600/30 bg-cyan-600/10 text-cyan-700'
-                            : isDarkMode
-                            ? 'border-purple-400/30 bg-purple-400/10 text-purple-300'
-                            : 'border-purple-600/30 bg-purple-600/10 text-purple-700'
-                        }`}
-                      >
-                        {genre}
-                      </span>
-
-                      {/* Length / Duration in Monospace */}
-                      <span
-                        className={`font-mono text-sm font-medium ${
-                          isDarkMode ? 'text-[#9D9CB1]' : 'text-[#636073]'
-                        }`}
-                      >
-                        {durationFormatted}
-                      </span>
-
-                      {/* Action Buttons: [Play] [Studio] */}
-                      <div className="flex items-center gap-2.5">
-                        {/* Play Button (50x50px Primary Purple) */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            navigate(`/play?id=${song.id}&source=${song.source || 'local'}`)
-                          }}
-                          className="flex h-[48px] w-[48px] cursor-pointer items-center justify-center rounded-full bg-[#8C49F4] text-white shadow-[0_0_28px_-6px_rgba(140,73,244,0.65)] transition-all hover:scale-105 hover:bg-[#9B5CF6] hover:shadow-[0_0_35px_-4px_rgba(140,73,244,0.8)] active:scale-95 md:h-[50px] md:w-[50px]"
-                          title="Play Song"
+                    {/* Unpacked Subtitle Track Rows (Rendered directly under title, indented) */}
+                    <AnimatePresence>
+                      {isMultiTrack && isExpanded && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.25 }}
+                          className="overflow-hidden"
                         >
-                          <Play className="ml-0.5 h-5 w-5 fill-current text-white" />
-                        </button>
+                          <div className="mt-4 pt-3.5 border-t border-white/[0.06] dark:border-white/[0.06] light:border-[#1B1630]/[0.06] pl-6 sm:pl-16 space-y-2">
+                            <div className="text-[11px] font-bold tracking-wider uppercase text-[#6E61EA] mb-2 flex items-center gap-1.5">
+                              <AudioWaveform className="h-3.5 w-3.5" />
+                              <span>Contained Tracks ({tracks.length})</span>
+                            </div>
 
-                        {/* Studio Button (50x50px Glass Border) */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            navigate(`/studio?id=${song.id}&source=${song.source || 'local'}`)
-                          }}
-                          className={`flex h-[48px] w-[48px] cursor-pointer items-center justify-center rounded-full border transition-all hover:scale-105 active:scale-95 md:h-[50px] md:w-[50px] ${
-                            isDarkMode
-                              ? 'border-white/10 bg-[#120D24]/60 text-[#F5F5F8] hover:border-[#8C49F4]/50 hover:bg-[#8C49F4]/15'
-                              : 'border-[#1B1630]/[0.1] bg-[#F8F8FE]/80 text-[#1B1630] hover:border-[#843EEA]/40 hover:bg-[#843EEA]/10'
-                          }`}
-                          title="Open in Studio"
-                        >
-                          <Sliders className="h-5 w-5" />
-                        </button>
-                      </div>
-                    </div>
+                            {tracks.map((track) => {
+                              const customName = customTrackNames[song.id]?.[track.id]
+                              const effectiveTrackName = customName || track.name
+                              const isEditing =
+                                editingTrack?.songId === song.id && editingTrack?.trackId === track.id
+
+                              return (
+                                <div
+                                  key={track.id}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className={`flex items-center justify-between rounded-xl px-3 py-2 transition-colors ${
+                                    isDarkMode
+                                      ? 'bg-[#120D24]/50 hover:bg-[#120D24]/80'
+                                      : 'bg-[#F8F8FE]/60 hover:bg-[#F8F8FE]'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                    <div className="h-1.5 w-1.5 rounded-full bg-[#6E61EA]" />
+                                    {isEditing ? (
+                                      <input
+                                        autoFocus
+                                        type="text"
+                                        value={editingTrackText}
+                                        onChange={(e) => setEditingTrackText(e.target.value)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') handleSaveTrack(song.id, track.id)
+                                          if (e.key === 'Escape') setEditingTrack(null)
+                                        }}
+                                        onBlur={() => handleSaveTrack(song.id, track.id)}
+                                        className={`rounded px-1.5 py-0.5 text-xs font-semibold outline-none ${
+                                          isDarkMode
+                                            ? 'border border-[#8C49F4] bg-[#1A1D2D] text-white'
+                                            : 'border border-[#843EEA] bg-white text-[#1B1630]'
+                                        }`}
+                                      />
+                                    ) : (
+                                      <span
+                                        onDoubleClick={(e) =>
+                                          handleStartEditingTrack(
+                                            song.id,
+                                            track.id,
+                                            effectiveTrackName,
+                                            e,
+                                          )
+                                        }
+                                        title="Double-click to rename track"
+                                        className={`text-xs sm:text-sm font-medium tracking-tight truncate select-none cursor-text ${
+                                          isDarkMode ? 'text-[#C5C6D0]' : 'text-[#444860]'
+                                        }`}
+                                      >
+                                        {effectiveTrackName}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <span className="text-[11px] font-mono text-[#9D9CB1] dark:text-[#9D9CB1] light:text-[#888A95] shrink-0 pl-2">
+                                    Track {track.id + 1}
+                                  </span>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </motion.div>
                 )
               })

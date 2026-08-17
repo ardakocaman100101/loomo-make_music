@@ -39,6 +39,7 @@ import { CompletionModal, TopBar, TrackHUD } from './components'
 import { MidiModal } from './components/MidiModal'
 import { StatsPopup } from './components/StatsPopup'
 import { ButtonWithTooltip } from './components/TopBar'
+import { AnimatePresence, motion } from 'motion/react'
 
 function RequiresPermissionPrompt({
   onGrantPermission,
@@ -187,6 +188,7 @@ export default function PlaySongPage() {
     [ppsScales.length],
   )
   const playerState = usePlayerState()
+  const countdown = useAtomValue(player.countdown)
   const instrumentVolume = useAtomValue(player.instrumentVolume)
   let { data: song, error, isLoading, mutate } = useSong(id, source)
   let songMeta = useSongMetadata(id, source)
@@ -231,6 +233,7 @@ export default function PlaySongPage() {
 
   useEffect(() => {
     if (!song) return
+    midiState.anchorToSong(song)
     player.trackConfigs = songConfig.tracks
     Object.entries(songConfig.tracks).forEach(([id, settings]) => {
       player.setTrackVolume(Number(id), settings.sound ? 1 : 0)
@@ -803,6 +806,52 @@ export default function PlaySongPage() {
           />
         </div>
       </div>
+
+      {/* Centered Dynamic Countdown Overlay (3 -> 2 -> 1) */}
+      <AnimatePresence mode="wait">
+        {countdown !== null && (
+          <div className="pointer-events-none fixed inset-0 z-50 flex flex-col items-center justify-center select-none">
+            {/* Ambient background glow */}
+            <motion.div
+              key={`countdown-glow-${countdown}`}
+              initial={{ opacity: 0, scale: 0.7 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="absolute h-[340px] w-[340px] rounded-full bg-[#7569EC]/25 blur-[100px]"
+            />
+
+            {/* Pulsing Countdown Circle */}
+            <motion.div
+              key={`countdown-circle-${countdown}`}
+              initial={{ scale: 0.6, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 1.35, opacity: 0, y: -15 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 28 }}
+              className="relative flex flex-col items-center justify-center"
+            >
+              <div className="flex h-36 w-36 items-center justify-center rounded-full border border-white/20 bg-[#1A1D2D]/90 shadow-[0_0_80px_rgba(117,105,236,0.65),inset_0_1px_1px_rgba(255,255,255,0.4)] backdrop-blur-2xl sm:h-40 sm:w-40">
+                <span className="font-['Space_Grotesk',sans-serif] text-7xl font-black tracking-tighter text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.8)] sm:text-8xl">
+                  {countdown}
+                </span>
+              </div>
+
+              {/* Space Skip Hint */}
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-6 flex items-center gap-2 rounded-full border border-white/10 bg-black/40 px-4 py-1.5 backdrop-blur-md shadow-lg"
+              >
+                <kbd className="rounded bg-white/20 px-1.5 py-0.5 text-[10px] font-bold text-white uppercase shadow-sm">
+                  Space
+                </kbd>
+                <span className="text-xs font-medium text-white/85">Press Space to skip</span>
+              </motion.div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <CompletionModal
         isOpen={isCompletedModalOpen}
         onClose={handleCloseCompletionModal}

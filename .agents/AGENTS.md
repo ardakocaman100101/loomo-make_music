@@ -71,3 +71,12 @@ All agents MUST adapt their thinking depth, token expenditure, and execution eff
 2. **In-Place Edits (No Update Section Accumulation):** Do **NOT** append new "Update #1", "Update #2", or separate "Update" headers every time new info is added. Update existing sections directly in place.
 3. **Context Alignment:** Keep loomo task updates, bug resolutions, and roadmaps aligned between the codebase and the corresponding Notion databases listed above.
 4. **No External Workspaces:** Limit Notion read/write activities exclusively to the loomo project hierarchy mapped above.
+
+---
+
+## Universal Status Transition & Lifecycle Rules
+
+1. **PM Agent:** Sets/maintains tickets in **`TODO`** (Features) or **`New`** (Bugs). Must NOT transition tickets to `Implementation`, `Test`, or `Done`.
+2. **Developer Agent:** Transitions tickets from `TODO` / `New` to **`Implementation`** (or `In progress`). After writing code, running builds, and adding implementation notes, the ticket **MUST REMAIN in `Implementation` / `In progress`**. The Developer Agent **MUST NEVER** set ticket status to **`Done`**, **`Fixed`**, or **`Test`**.
+3. **Tester Agent:** Transitions tickets from `Implementation` to **`Test`** when starting QA. If all tests pass, leaves in `Test` (or user marks `Done` / `Fixed`). If any test fails, transitions status back to `Implementation`.
+4. **Done / Fixed Status:** `Done` and `Fixed` are reserved exclusively for post-QA signoff or the Boss (User). Developer agents never complete tickets as `Done` or `Fixed`.

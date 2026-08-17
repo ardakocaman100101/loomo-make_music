@@ -45,7 +45,7 @@ export function getActiveNotes(state: State): Map<number, string> {
   const activeNotes = new Map<number, string>(state.player.pressFeedback)
   for (const midiNote of midiState.getPressedNotes().keys()) {
     if (!activeNotes.has(midiNote)) {
-      activeNotes.set(midiNote, 'purple')
+      activeNotes.set(midiNote, 'grey')
     }
   }
   return activeNotes
@@ -129,9 +129,13 @@ export function renderFallingNote(
   const circleRadius = Math.min(width / 2, keyHeight / 2)
   const defaultColor = getNoteDefaultColor(state, note)
 
-  // FIX: single call to getNoteFeedbackColor (was called at line 566 and again at line 681)
-  const activeFeedbackColor = getNoteFeedbackColor(state, note)
+  let activeFeedbackColor = getNoteFeedbackColor(state, note)
   const isPressed = midiState.getPressedNotes().has(note.midiNote)
+  const liveFeedback = state.player.pressFeedback.get(note.midiNote)
+
+  if (isPressed && liveFeedback && (isActiveTarget || state.time >= note.time - 0.2)) {
+    activeFeedbackColor = feedbackColors[liveFeedback] ?? liveFeedback
+  }
 
   ctx.save()
 

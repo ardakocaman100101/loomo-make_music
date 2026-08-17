@@ -26,6 +26,33 @@ export function getAudioContext(): BaseAudioContext {
   return Tone.getContext().rawContext
 }
 
+export function playCountdownClick(accented = false) {
+  try {
+    const rawCtx = Tone.getContext().rawContext
+    if (rawCtx && rawCtx.state === 'suspended') {
+      rawCtx.resume()
+    }
+    const ctx = rawCtx as AudioContext
+    if (!ctx) return
+    const now = ctx.currentTime
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(accented ? 1200 : 880, now)
+    osc.frequency.exponentialRampToValueAtTime(120, now + 0.04)
+
+    gain.gain.setValueAtTime(0.8, now)
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04)
+
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+
+    osc.start(now)
+    osc.stop(now + 0.04)
+  } catch (_) {}
+}
+
 export function getKeyForSoundfont(note: number) {
   const soundFontIndex = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B']
   return soundFontIndex[note % 12] + getOctave(note)

@@ -1,7 +1,7 @@
 import { roundCorner, roundRect } from '@/features/drawing'
 import { getKey, getOctave, isBlack, isWhite } from '@/features/theory'
 import { isNumber } from '@/utils'
-import midiState from '../midi'
+import midiState, { getKeyboardBadgeForNote, hasConnectedMidiInputs } from '../midi'
 import { isPointerDown } from '../pointer'
 import { getImages } from '../SongVisualization/images'
 import { isDragging } from '../SongVisualization/touchscroll'
@@ -115,6 +115,9 @@ export async function drawPianoRoll(
   // TODO: fix magic number +5. Likely similar solution to getting rid of
   // pianoTopY kludge.
   ctx.fillRect(0, pianoTopY, measurements.pianoWidth, whiteHeight + 5)
+  const showKeyboardBadges = !hasConnectedMidiInputs()
+  const baseMidiNote = midiState.getBaseMidiNote()
+
   for (let [midiNote, lane] of whiteNotes) {
     const { left, width } = lane
     const heightPressedOffset = activeNotes.has(+midiNote) ? 2 : 0
@@ -142,7 +145,7 @@ export async function drawPianoRoll(
       })
     }
 
-    // Small, cohesive bottom hint label (low opacity warm cream/dark shade)
+    // 1. Permanent Note Name Label (Untouched original position at bottom of white key)
     const keyName = getKey(+midiNote)
     const isC = keyName === 'C'
     const octave = getOctave(+midiNote)
@@ -157,6 +160,34 @@ export async function drawPianoRoll(
       left + width / 2 - labelWidth / 2 - measurements.whiteNoteSeparation / 2,
       pianoTopY + whiteHeight - 5,
     )
+
+    // 2. Keyboard Badge (Aligned on the exact SAME horizontal line as the black key badges)
+    const keyBadge = showKeyboardBadges ? getKeyboardBadgeForNote(+midiNote) : null
+
+    if (keyBadge) {
+      ctx.save()
+      const badgeW = Math.max(16, Math.min(22, width * 0.46))
+      const badgeH = 20
+      const badgeX = left + width / 2 - badgeW / 2 - measurements.whiteNoteSeparation / 2
+      const badgeY = pianoTopY + blackHeight - 26 // Exact same horizontal line as black keys
+      const badgeR = 4
+
+      // Translucent Loomo Keycap Pill
+      ctx.fillStyle = 'rgba(140, 73, 244, 0.14)'
+      ctx.strokeStyle = 'rgba(140, 73, 244, 0.45)'
+      ctx.lineWidth = 1
+      roundRect(ctx, badgeX, badgeY, badgeW, badgeH, { topRadius: badgeR, bottomRadius: badgeR })
+      ctx.fill()
+      ctx.stroke()
+
+      // Keycap Letter
+      ctx.fillStyle = '#8C49F4'
+      ctx.font = `bold ${Math.max(9, Math.min(11, badgeW * 0.55))}px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace`
+      ctx.textBaseline = 'middle'
+      const { width: badgeTextW } = ctx.measureText(keyBadge)
+      ctx.fillText(keyBadge, badgeX + badgeW / 2 - badgeTextW / 2, badgeY + badgeH / 2 + 0.5)
+      ctx.restore()
+    }
 
     // Top finger number helper if active
     if (activeFingerings?.has(+midiNote)) {
@@ -176,8 +207,6 @@ export async function drawPianoRoll(
 
   for (let [midiNote, lane] of blackNotes) {
     let { left, width, whiteMiddle } = lane
-    // No real reason why cornerWidth is set to white note separator.
-    // Just think it looks OK.
     const cornerWidth = measurements.whiteNoteSeparation
     ctx.strokeStyle = 'transparent'
     ctx.fillStyle = 'black'
@@ -226,6 +255,31 @@ export async function drawPianoRoll(
     blackGrad.addColorStop(1, 'rgba(0, 0, 0, 0.90)') // Make bottom edge matte & dark
     ctx.fillStyle = blackGrad
     ctx.fillRect(left, posY, width, blackHeight)
+
+    const blackKeyBadge = showKeyboardBadges ? getKeyboardBadgeForNote(+midiNote) : null
+    if (blackKeyBadge) {
+      ctx.save()
+      const badgeW = Math.max(16, Math.min(20, width * 0.52))
+      const badgeH = 18
+      const badgeX = left + width / 2 - badgeW / 2
+      const badgeY = pianoTopY + blackHeight - 26
+      const badgeR = 3.5
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.18)'
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)'
+      ctx.lineWidth = 1
+      roundRect(ctx, badgeX, badgeY, badgeW, badgeH, { topRadius: badgeR, bottomRadius: badgeR })
+      ctx.fill()
+      ctx.stroke()
+
+      ctx.fillStyle = '#FFFFFF'
+      ctx.font = `bold ${Math.max(9, Math.min(11, badgeW * 0.55))}px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace`
+      ctx.textBaseline = 'middle'
+      const { width: textW } = ctx.measureText(blackKeyBadge)
+      ctx.fillText(blackKeyBadge, left + width / 2 - textW / 2, badgeY + badgeH / 2 + 0.5)
+      ctx.restore()
+    }
+
     if (activeFingerings?.has(+midiNote)) {
       const finger = activeFingerings.get(+midiNote)
       ctx.fillStyle = 'rgba(255, 255, 255, 0.45)' // White at 45% opacity

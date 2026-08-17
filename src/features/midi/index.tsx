@@ -1,5 +1,5 @@
 import { getAudioEffectsBus } from '@/features/synth/effects-bus'
-import { getNote } from '@/features/theory'
+import { getNote, isBlack, isWhite } from '@/features/theory'
 import { MidiStateEvent } from '@/types'
 import { isBrowser } from '@/utils'
 import * as tonejs from '@tonejs/midi'
@@ -175,39 +175,171 @@ function parseMidiMessage(event: MIDIMessageEvent): MidiEvent | null {
   return null
 }
 
-function getKeyConfig() {
-  const white = ['C', 'D', 'E', 'F', 'G', 'A', 'B']
-  const black = ['Db', 'Eb', 'Gb', 'Ab', 'Bb']
+// Sequence of all white notes on a standard 88-key piano (A0 = 21 to C8 = 108)
+export const ALL_WHITE_MIDI: number[] = Array.from({ length: 88 }, (_, i) => i + 21).filter(isWhite)
 
-  const layouts = [
-    { keys: 'zxcvbnm', notes: white, octave: 3 },
-    { keys: 'sdghj', notes: black, octave: 3 },
-    { keys: 'qwertyu', notes: white, octave: 4 },
-    { keys: '23567', notes: black, octave: 4 },
-  ]
+// 11 Home row keys mapped to consecutive white keys
+export const HOME_ROW_KEYS = [
+  'KeyA',
+  'KeyS',
+  'KeyD',
+  'KeyF',
+  'KeyG',
+  'KeyH',
+  'KeyJ',
+  'KeyK',
+  'KeyL',
+  'Semicolon',
+  'Quote',
+]
+export const HOME_ROW_LABELS = ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ';', "'"]
 
-  const map: Record<string, [string, number]> = {}
-  for (const { keys, notes, octave } of layouts) {
-    for (let i = 0; i < keys.length; i++) {
-      const c = keys[i]
-      const prefix = /\d/.test(c) ? 'Digit' : 'Key'
-      const code = prefix + c.toUpperCase()
-      map[code] = [notes[i], octave]
-    }
-  }
-  return map
+// 10 Top row gap keys physically situated between the 11 home row keys
+export const GAP_KEYS = [
+  'KeyW',
+  'KeyE',
+  'KeyR',
+  'KeyT',
+  'KeyY',
+  'KeyU',
+  'KeyI',
+  'KeyO',
+  'KeyP',
+  'BracketLeft',
+]
+export const GAP_LABELS = ['W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '[']
+
+let keyboardLayoutMap: Map<string, string> | null = null
+if (isBrowser() && 'keyboard' in navigator && (navigator as any).keyboard?.getLayoutMap) {
+  ;(navigator as any).keyboard
+    .getLayoutMap()
+    .then((map: Map<string, string>) => {
+      keyboardLayoutMap = map
+    })
+    .catch(() => {})
 }
 
-const keyboardConfig: { [key: string]: [string, number] } = getKeyConfig()
+export function hasConnectedMidiInputs(): boolean {
+  return enabledInputDevices.size > 0
+}
+
+export function getKeyboardBadgeForNote(midiNote: number): string | null {
+  const entry = midiState.activeMidiToBadge.get(midiNote)
+  if (!entry) return null
+  if (keyboardLayoutMap && keyboardLayoutMap.has(entry.code)) {
+    const val = keyboardLayoutMap.get(entry.code)
+    return val ? val.toUpperCase() : entry.defaultLabel
+  }
+  return entry.defaultLabel
+}
 
 class MidiState {
-  octaveDiff = 0 // For PC keyboard
+  startWhiteIndex = 23 // Default index of C4 (60) in ALL_WHITE_MIDI
+  activeCodeToMidi = new Map<string, number>()
+  activeMidiToBadge = new Map<number, { code: string; defaultLabel: string }>()
   midiOctaveDiff = 0 // Used to auto-shift physical MIDI keyboard to match song octaves
   pressedNotes = new Map<number, { time: number; vel: number }>()
   keyPressedNotes = new Set<number>()
   listeners: Array<Function> = []
   detectedRange: { start: number; end: number } | null = null
   observedRange: { start: number; end: number } | null = null
+
+  constructor() {
+    this.rebuildDynamicMap()
+  }
+
+  getBaseMidiNote(): number {
+    const safeIndex = Math.max(0, Math.min(ALL_WHITE_MIDI.length - 11, this.startWhiteIndex))
+    return ALL_WHITE_MIDI[safeIndex] ?? 60
+  }
+
+  rebuildDynamicMap() {
+    this.activeCodeToMidi.clear()
+    this.activeMidiToBadge.clear()
+
+    const maxStart = Math.max(0, ALL_WHITE_MIDI.length - 11)
+    const safeStart = Math.max(0, Math.min(maxStart, this.startWhiteIndex))
+
+    for (let i = 0; i < 11; i++) {
+      const whiteMidi = ALL_WHITE_MIDI[safeStart + i]
+      if (whiteMidi === undefined) continue
+
+      const code = HOME_ROW_KEYS[i]
+      const label = HOME_ROW_LABELS[i]
+      this.activeCodeToMidi.set(code, whiteMidi)
+      this.activeMidiToBadge.set(whiteMidi, { code, defaultLabel: label })
+
+      // Check if there is a black key between white key i and white key i + 1
+      if (i < 10) {
+        const nextWhiteMidi = ALL_WHITE_MIDI[safeStart + i + 1]
+        if (nextWhiteMidi !== undefined && nextWhiteMidi - whiteMidi === 2) {
+          const blackMidi = whiteMidi + 1
+          const blackCode = GAP_KEYS[i]
+          const blackLabel = GAP_LABELS[i]
+          this.activeCodeToMidi.set(blackCode, blackMidi)
+          this.activeMidiToBadge.set(blackMidi, { code: blackCode, defaultLabel: blackLabel })
+        }
+      }
+    }
+  }
+
+  anchorToSong(song: any) {
+    if (!song) return
+    const notes: Array<{ midiNote?: number; midi?: number }> = song.notes || song.items || []
+    if (!Array.isArray(notes) || notes.length === 0) {
+      this.rebuildDynamicMap()
+      return
+    }
+
+    const pitches = notes
+      .map((n) => n.midiNote ?? n.midi)
+      .filter((p): p is number => typeof p === 'number' && p >= 21 && p <= 108)
+      .sort((a, b) => a - b)
+
+    if (pitches.length === 0) {
+      this.rebuildDynamicMap()
+      return
+    }
+
+    const median = pitches[Math.floor(pitches.length / 2)]
+    const average = pitches.reduce((sum, p) => sum + p, 0) / pitches.length
+    const minPitch = pitches[0]
+    const maxPitch = pitches[pitches.length - 1]
+    const songMidpoint = (minPitch + maxPitch) / 2
+
+    const maxStart = Math.max(0, ALL_WHITE_MIDI.length - 11)
+    let bestStartIndex = 23
+    let bestScore = -Infinity
+
+    for (let i = 0; i <= maxStart; i++) {
+      const wStart = ALL_WHITE_MIDI[i]
+      const wEnd = ALL_WHITE_MIDI[i + 10]
+      const spanMin = wStart
+      const spanMax = isBlack(wEnd + 1) ? wEnd + 1 : wEnd
+
+      // Number of song notes covered inside this candidate keyboard span
+      const coveredNotes = pitches.filter((p) => p >= spanMin && p <= spanMax).length
+      const coverageRatio = coveredNotes / pitches.length
+
+      const spanCenter = (spanMin + spanMax) / 2
+      const distFromMedian = Math.abs(spanCenter - median)
+      const distFromMidpoint = Math.abs(spanCenter - songMidpoint)
+      const distFromAverage = Math.abs(spanCenter - average)
+
+      // Score prioritizes covering the maximum amount of song notes, then centering
+      const score =
+        coverageRatio * 1000 -
+        (distFromMedian * 2.0 + distFromMidpoint * 1.5 + distFromAverage * 1.0)
+
+      if (score > bestScore) {
+        bestScore = score
+        bestStartIndex = i
+      }
+    }
+
+    this.startWhiteIndex = bestStartIndex
+    this.rebuildDynamicMap()
+  }
 
   updateDetectedRange() {
     let min = 21
@@ -275,52 +407,63 @@ class MidiState {
   }
 
   handleKeyDown(e: KeyboardEvent) {
-    console.log('MidiState handleKeyDown', e.code, e.key)
-    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+    const target = e.target as HTMLElement | null
+    if (
+      target &&
+      (target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        target.isContentEditable ||
+        target.closest('input, textarea, select, [contenteditable="true"], dialog, [role="dialog"]'))
+    ) {
+      return
+    }
 
     let { key, code, metaKey, ctrlKey, altKey } = e
 
     if (metaKey || ctrlKey || altKey) {
       return
     }
-    if (!(code in keyboardConfig) && key !== 'ArrowUp' && key !== 'ArrowDown') {
+
+    if (key === 'ArrowUp') {
+      e.preventDefault()
+      this.startWhiteIndex = Math.min(ALL_WHITE_MIDI.length - 11, this.startWhiteIndex + 7)
+      this.rebuildDynamicMap()
+      this.keyPressedNotes.forEach((n) => this.release(n))
+      this.keyPressedNotes.clear()
+      return
+    } else if (key === 'ArrowDown') {
+      e.preventDefault()
+      this.startWhiteIndex = Math.max(0, this.startWhiteIndex - 7)
+      this.rebuildDynamicMap()
+      this.keyPressedNotes.forEach((n) => this.release(n))
+      this.keyPressedNotes.clear()
+      return
+    }
+
+    const computedNote = this.activeCodeToMidi.get(code)
+    if (computedNote === undefined) {
       return
     }
 
     e.preventDefault()
     e.stopPropagation()
 
-    // Some OSes / browsers will automatically repeat a letter when held down.
-    // We don't want to count those.
+    // Suppress repeated keydown from OS key repeat
     if (e.repeat) {
       return
     }
 
-    if (key === 'ArrowUp') {
-      this.octaveDiff = Math.min(4, this.octaveDiff + 2)
-      this.keyPressedNotes.forEach((n) => this.release(n))
-      this.keyPressedNotes.clear()
-    } else if (key === 'ArrowDown') {
-      this.octaveDiff = Math.max(-4, this.octaveDiff - 2)
-      this.keyPressedNotes.forEach((n) => this.release(n))
-      this.keyPressedNotes.clear()
-    } else if (code in keyboardConfig) {
-      const [note, octave] = keyboardConfig[code]
-      const computedOctave = octave + this.octaveDiff
-      const computedNote = getNote(note + computedOctave)
-      if (computedNote) {
-        this.keyPressedNotes.add(computedNote)
-        this.press(computedNote, 80)
-      }
+    if (computedNote >= 21 && computedNote <= 108) {
+      this.keyPressedNotes.add(computedNote)
+      this.press(computedNote, 85)
     }
   }
 
   handleKeyUp(e: KeyboardEvent) {
     const code = e.code
-    if (code in keyboardConfig) {
-      const [note, octave] = keyboardConfig[code]
-      const computedOctave = octave + this.octaveDiff
-      const computedNote = getNote(note + computedOctave)
+    const computedNote = this.activeCodeToMidi.get(code)
+    if (computedNote !== undefined) {
       this.keyPressedNotes.delete(computedNote)
       this.release(computedNote)
     }

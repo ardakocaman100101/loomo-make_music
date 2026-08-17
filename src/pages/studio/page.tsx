@@ -42,16 +42,29 @@ import {
   SlidersHorizontal,
   Sparkles,
   Square,
+  Tag,
   Target,
   Trash2,
   Undo2,
   Volume2,
   X,
 } from 'lucide-react'
+import Storage from '@/features/persist/storage'
 import { AnimatePresence, motion } from 'motion/react'
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { mutate } from 'swr'
+
+const PRESET_TAGS = [
+  'Beginner friendly',
+  'Under 1 min',
+  'Covers',
+  'Classical',
+  'Electronic',
+  'Jazz',
+  'Pop',
+  'Chiptune',
+] as const
 
 // Pitch helpers
 const ROW_HEIGHT = 28 // px
@@ -327,6 +340,10 @@ export default function Studio() {
   const [mutedTracks, setMutedTracks] = useState<Set<number>>(new Set())
   const [soloTracks, setSoloTracks] = useState<Set<number>>(new Set())
 
+  // Song Tags state
+  const [songTags, setSongTags] = useState<string[]>([])
+  const [customTagInput, setCustomTagInput] = useState('')
+
   const [isSavedToLibrary, setIsSavedToLibrary] = useState<boolean>(Boolean(id))
   const savedSnapshotRef = useRef<string>('')
   const playbackTimeRef = useRef<number>(0)
@@ -341,6 +358,36 @@ export default function Studio() {
   const isDraggingPlayheadRef = useRef(false)
   const justFinishedDragRef = useRef(false)
   const hasManuallyMovedPlayheadRef = useRef(false)
+
+  const handleToggleTag = (tag: string) => {
+    let nextTags: string[]
+    if (songTags.includes(tag)) {
+      nextTags = songTags.filter((t) => t !== tag)
+    } else {
+      if (songTags.length >= 5) return
+      nextTags = [...songTags, tag]
+    }
+    setSongTags(nextTags)
+  }
+
+  const handleAddCustomTag = (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    const trimmed = customTagInput.trim()
+    if (!trimmed) return
+    if (songTags.length >= 5) return
+    if (songTags.some((t) => t.toLowerCase() === trimmed.toLowerCase())) {
+      setCustomTagInput('')
+      return
+    }
+    const nextTags = [...songTags, trimmed]
+    setSongTags(nextTags)
+    setCustomTagInput('')
+  }
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    const nextTags = songTags.filter((t) => t !== tagToRemove)
+    setSongTags(nextTags)
+  }
 
   useEffect(() => {
     if (id) {
@@ -358,12 +405,12 @@ export default function Studio() {
 
   const hasUnsavedChanges = useMemo(() => {
     if (!savedSnapshotRef.current) return false
-    const current = JSON.stringify({ notes, tracks, songName, bpm })
-    const isNotesOrTracksModified = current !== savedSnapshotRef.current
+    const current = JSON.stringify({ notes, tracks, songName, bpm, songTags })
+    const isModified = current !== savedSnapshotRef.current
     const isPlayheadManuallyMoved =
       hasManuallyMovedPlayheadRef.current && Math.abs(playbackTime) > 0.05
-    return isNotesOrTracksModified || isPlayheadManuallyMoved
-  }, [notes, tracks, songName, bpm, playbackTime])
+    return isModified || isPlayheadManuallyMoved
+  }, [notes, tracks, songName, bpm, songTags, playbackTime])
 
   const isFullySaved = isSavedToLibrary && !hasUnsavedChanges
 
@@ -424,8 +471,17 @@ export default function Studio() {
         console.error('Failed predicting fingerings during save to library:', err)
       }
     }
-    await idb.set(`SONG_DATA_${targetId}`, songWithFingerings)
+    const songToSaveFinal = {
+      ...songWithFingerings,
+      tags: songTags,
+    }
+    await idb.set(`SONG_DATA_${targetId}`, songToSaveFinal)
     persistence.registerCustomSketch(targetId, songName, totalDuration)
+
+    // Persist tags to loomo_custom_tags
+    const allCustomTags = Storage.get<Record<string, string[]>>('loomo_custom_tags') || {}
+    allCustomTags[targetId] = songTags
+    Storage.set('loomo_custom_tags', allCustomTags)
 
     const finalNotes = songWithFingerings.notes || notesToProcess
     savedSnapshotRef.current = JSON.stringify({
@@ -433,10 +489,11 @@ export default function Studio() {
       tracks,
       songName,
       bpm,
+      songTags,
     })
     setIsSavedToLibrary(true)
 
-    return { midiBytes, songWithFingerings }
+    return { midiBytes, songWithFingerings: songToSaveFinal }
   }
 
   const handleSaveToLibrary = async () => {
@@ -816,11 +873,23 @@ export default function Studio() {
         setBpm(initialBpm)
       }
 
+      let initialTags: string[] = []
+      if (id) {
+        const allCustomTags = Storage.get<Record<string, string[]>>('loomo_custom_tags') || {}
+        if (allCustomTags[id]) {
+          initialTags = allCustomTags[id]
+        } else if ((loadedSong as any)?.tags && Array.isArray((loadedSong as any).tags)) {
+          initialTags = (loadedSong as any).tags
+        }
+      }
+      setSongTags(initialTags)
+
       savedSnapshotRef.current = JSON.stringify({
         notes: normalizedNotes,
         tracks: normalizedTracks,
         songName: initialName,
         bpm: initialBpm,
+        songTags: initialTags,
       })
 
       // Initialize history
@@ -839,11 +908,13 @@ export default function Studio() {
           program: 0,
         },
       }
+      setSongTags([])
       savedSnapshotRef.current = JSON.stringify({
         notes: initialNotes,
         tracks: initialTracks,
         songName: 'Untitled Song',
         bpm: 120,
+        songTags: [],
       })
       setHistory([{ notes: initialNotes, tracks: initialTracks }])
       setHistoryIndex(0)
@@ -2042,6 +2113,99 @@ export default function Studio() {
                     </div>
                   )
                 })}
+              </div>
+
+              {/* Song Tags Module Under Tracks */}
+              <div className="border-t border-[#353534]/50 bg-[#141414] p-4 space-y-3 shrink-0">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Tag className="h-3.5 w-3.5 text-[#8C49F4]" />
+                    <span className="text-xs font-bold tracking-wider text-white uppercase">Song Tags</span>
+                  </div>
+                  <span
+                    className={`text-[10px] font-bold ${
+                      songTags.length >= 5 ? 'text-[#AE8DFC]' : 'text-white/40'
+                    }`}
+                  >
+                    {songTags.length}/5
+                  </span>
+                </div>
+
+                {/* Active / Attached Tags */}
+                {songTags.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {songTags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="inline-flex items-center gap-1 rounded-full border border-[#8C49F4] bg-[#8C49F4]/20 px-2.5 py-0.5 text-xs font-bold text-[#D3BCFD] shadow-[0_0_12px_rgba(140,73,244,0.35)] select-none"
+                      >
+                        <span className="truncate max-w-[150px]">{tag}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveTag(tag)}
+                          className="cursor-pointer text-white/60 hover:text-white transition-colors"
+                          title="Remove tag"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Custom Tag Input (25 char limit) */}
+                {songTags.length < 5 && (
+                  <form onSubmit={handleAddCustomTag} className="relative flex items-center">
+                    <input
+                      type="text"
+                      maxLength={25}
+                      value={customTagInput}
+                      onChange={(e) => setCustomTagInput(e.target.value)}
+                      placeholder="Add tag (max 25 chars)..."
+                      className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 pr-8 text-xs font-medium text-white placeholder:text-white/30 focus:border-[#8C49F4] focus:bg-[#1A1D2D] focus:outline-none transition-colors"
+                    />
+                    {customTagInput.trim() && (
+                      <button
+                        type="submit"
+                        className="absolute right-1.5 cursor-pointer rounded-lg bg-[#8C49F4] p-1 text-white hover:bg-[#9B5CF6] transition-colors"
+                        title="Add custom tag"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </button>
+                    )}
+                  </form>
+                )}
+
+                {/* Preset Recommendations */}
+                <div className="space-y-1.5 pt-0.5">
+                  <span className="text-[10px] font-bold tracking-wider text-white/40 uppercase">
+                    Presets
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {PRESET_TAGS.map((preset) => {
+                      const isSelected = songTags.includes(preset)
+                      const isMaxReached = songTags.length >= 5 && !isSelected
+
+                      return (
+                        <button
+                          key={preset}
+                          type="button"
+                          disabled={isMaxReached}
+                          onClick={() => handleToggleTag(preset)}
+                          className={`cursor-pointer rounded-full px-2.5 py-1 text-[11px] font-semibold transition-all duration-200 select-none ${
+                            isSelected
+                              ? 'border border-[#8C49F4] bg-[#8C49F4]/30 text-[#D3BCFD] shadow-[0_0_12px_rgba(140,73,244,0.35)]'
+                              : isMaxReached
+                              ? 'border border-white/5 bg-white/[0.02] text-white/20 cursor-not-allowed'
+                              : 'border border-white/10 bg-white/5 text-white/50 hover:border-white/20 hover:bg-white/10 hover:text-white/80'
+                          }`}
+                        >
+                          {preset}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
               </div>
 
               {/* Preset sketch templates */}

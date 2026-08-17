@@ -1,11 +1,10 @@
-// TODO: handle when users don't have an AudioContext supporting browser
 import { getSynthStub, InstrumentName, trackAudioEngine } from '@/features/synth'
 import { MidiStateEvent, Song, SongConfig, SongMeasure, SongNote, TrackSetting } from '@/types'
 import { getHands, round } from '@/utils'
 import { atom, Atom, getDefaultStore, PrimitiveAtom } from 'jotai'
 import midi from '../midi'
 import { getSynth, Synth } from '../synth'
-import { getAudioContext } from '../synth/utils'
+import { getAudioContext, playCountdownClick } from '../synth/utils'
 import {
   calculateNoteDurationScore,
   evaluateFirstPressScore,
@@ -104,6 +103,9 @@ export class Player {
   metronomeLastPlayedTick: null | number = null
   metronomeSynth = getSynthStub('woodblock')
   metronomeAccentedSynth = getSynthStub('agogo')
+
+  countdown = atom<number | null>(null)
+  countdownTimers: any[] = []
 
   currentIndex: number = 0
   lastIntervalFiredTime = 0
@@ -491,14 +493,91 @@ export class Player {
     return song.measures[index]
   }
 
-  play() {
+  isCountingDown() {
+    return this.store.get(this.countdown) !== null
+  }
+
+  cancelCountdown() {
+    this.countdownTimers.forEach((timer) => clearTimeout(timer))
+    this.countdownTimers = []
+    this.store.set(this.countdown, null)
+  }
+
+  skipCountdown() {
+    this.cancelCountdown()
+    this.startPlayback_()
+  }
+
+  startCountdown_() {
+    this.cancelCountdown()
+    trackAudioEngine.ensureAudioContextRunning()
+
+    const currentBpm = this.store.get(this.currentBpm) || 120
+    const beatIntervalMs = (60 / currentBpm) * 1000
+
+    // Beat 3 (Immediately upon trigger)
+    this.store.set(this.countdown, 3)
+    playCountdownClick(true)
+
+    // Beat 2 (at 1 * beatIntervalMs)
+    const t1 = setTimeout(() => {
+      this.store.set(this.countdown, 2)
+      playCountdownClick(false)
+    }, beatIntervalMs)
+    this.countdownTimers.push(t1)
+
+    // Beat 1 (at 2 * beatIntervalMs)
+    const t2 = setTimeout(() => {
+      this.store.set(this.countdown, 1)
+      playCountdownClick(false)
+    }, beatIntervalMs * 2)
+    this.countdownTimers.push(t2)
+
+    // Beat 0 (Launch playback at 3 * beatIntervalMs at exact downbeat)
+    const t3 = setTimeout(() => {
+      this.store.set(this.countdown, null)
+      this.countdownTimers = []
+      this.startPlayback_()
+    }, beatIntervalMs * 3)
+    this.countdownTimers.push(t3)
+  }
+
+  play(options?: { forceCountIn?: boolean; skipCountIn?: boolean }) {
+    if (this.isCountingDown()) {
+      this.skipCountdown()
+      return
+    }
+
+    if (this.isPlaying() || this.store.get(this.state) === 'CannotPlay') {
+      return
+    }
+
+    // If at the end of the song, restart it
+    if (this.currentSongTime >= this.getDuration()) {
+      this.seek(0)
+    }
+
+    const range = this.store.get(this.range)
+    const atStartOfSong = this.currentSongTime <= 0.05
+    const atStartOfRange = range ? Math.abs(this.currentSongTime - range[0]) <= 0.05 : false
+
+    const shouldCountIn =
+      !options?.skipCountIn && (options?.forceCountIn || atStartOfSong || atStartOfRange)
+
+    if (shouldCountIn) {
+      this.startCountdown_()
+    } else {
+      this.startPlayback_()
+    }
+  }
+
+  startPlayback_() {
     if (this.isPlaying() || this.store.get(this.state) === 'CannotPlay') {
       return
     }
 
     trackAudioEngine.ensureAudioContextRunning()
 
-    // If at the end of the song, restart it
     if (this.currentSongTime >= this.getDuration()) {
       this.seek(0)
     }
@@ -571,7 +650,10 @@ export class Player {
     // If at the end of the song, stop playing or loop.
     if (this.currentSongTime >= this.getDuration()) {
       if (this.store.get(this.songLoop)) {
+        this.pause()
         this.seek(0)
+        this.resetStats_()
+        this.play({ forceCountIn: true })
         return
       } else {
         this.currentIndex = song.notes.length
@@ -589,8 +671,10 @@ export class Player {
         if (this.store.get(this.progressiveMode)) {
           this.checkProgressiveAdvance_(stop)
         }
+        this.pause()
         this.seek(start)
         this.resetStats_()
+        this.play({ forceCountIn: true })
         return
       }
     }
@@ -700,6 +784,10 @@ export class Player {
   }
 
   toggle() {
+    if (this.isCountingDown()) {
+      this.skipCountdown()
+      return
+    }
     if (this.isPlaying()) {
       this.pause()
       return
@@ -744,6 +832,9 @@ export class Player {
   }
 
   pause() {
+    if (this.isCountingDown()) {
+      this.cancelCountdown()
+    }
     if (!this.isPlaying()) {
       return
     }
@@ -756,15 +847,18 @@ export class Player {
   }
 
   restart() {
+    this.cancelCountdown()
     const range = this.store.get(this.range)
     if (range == null) {
       this.stop()
+      this.play({ forceCountIn: true })
       return
     }
     const [start, _end] = range
     this.pause()
     this.seek(start)
     this.resetStats_()
+    this.play({ forceCountIn: true })
   }
 
   stop() {
@@ -789,6 +883,8 @@ export class Player {
     this.hitNotes.clear()
     this.missedNotes.clear()
     this.keyPressTimes.clear()
+    this.lateNotes.clear()
+    this.pressFeedback.clear()
     this.store.set(this.score.early, 0)
     this.store.set(this.score.late, 0)
     this.store.set(this.score.missed, 0)
@@ -824,6 +920,8 @@ export class Player {
     }
 
     this.stopAllSounds()
+    this.lateNotes.clear()
+    this.pressFeedback.clear()
     this.currentSongTime = time
     if (song.backing) {
       song.backing.currentTime = time

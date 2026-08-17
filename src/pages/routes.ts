@@ -13,4 +13,5 @@ export default [
   route('studio', './studio/page.tsx'),
   route('play', './play/page.tsx'),
   route('freeplay', './freeplay/page.tsx'),
+  route('test/fingering', './test/fingering/page.tsx'),
 ] satisfies RouteConfig

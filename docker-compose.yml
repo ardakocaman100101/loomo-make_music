@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: loomo-postgres
+    restart: unless-stopped
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-loomo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-loomo_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-loomo_db}
+    volumes:
+      - loomo_pgdata:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER:-loomo} -d $${POSTGRES_DB:-loomo_db}']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  loomo_pgdata:
+    name: loomo_pgdata

@@ -253,296 +253,241 @@ export default function CompletionModal({
       ? Math.max(...history.map((h) => Math.round(h.averageDurationScore * 100)), currentDurationScore)
       : currentDurationScore
 
-  // Prepare Point Graph data coordinates
-  const displayHistory = (history.length > 0 ? history : [{ averageDurationScore: currentDurationScore / 100, timestamp: Date.now() }]).slice(-6)
-  const chartPoints = displayHistory.map((rec, idx, arr) => {
-    const val = Math.round(rec.averageDurationScore * 100)
-    const count = arr.length
-    const x = count === 1 ? 200 : 30 + (idx * 340) / (count - 1)
-    const y = 58 - (val / 100) * 36
-    const isPeak = val >= maxDurationScore && val > 0
-    return { x, y, val, isPeak }
-  })
+  // Prepare Session Duration History data points
+  const rawHistory = history.length > 0
+    ? [...history.map((h) => Math.round(h.averageDurationScore * 100)), currentDurationScore]
+    : [currentDurationScore]
+  const displayHistory = rawHistory.slice(-8)
+  const chartHistory = displayHistory.length === 1 ? [displayHistory[0], displayHistory[0]] : displayHistory
 
-  // SVG Line path & Gradient Area path
-  const linePathD = chartPoints.reduce((acc, pt, i) => `${acc} ${i === 0 ? 'M' : 'L'} ${pt.x} ${pt.y}`, '')
-  const firstPt = chartPoints[0]
-  const lastPt = chartPoints[chartPoints.length - 1]
-  const areaPathD = `${linePathD} L ${lastPt.x} 68 L ${firstPt.x} 68 Z`
+  let minVal = Math.min(...chartHistory) - 4
+  let maxVal = Math.max(...chartHistory) + 4
+  if (minVal === maxVal) {
+    minVal -= 5
+    maxVal += 5
+  }
+
+  const chartPoints = chartHistory.map((val, idx) => ({
+    x: (idx / (chartHistory.length - 1)) * 100,
+    y: 100 - ((val - minVal) / (maxVal - minVal)) * 100,
+    val,
+  }))
+
+  const linePathD = chartPoints.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x} ${pt.y}`).join(' ')
+
+  const hitMetrics = [
+    { label: 'Perfect', value: perfect, tone: 'text-emerald-600' },
+    { label: 'Early', value: early, tone: 'text-amber-500' },
+    { label: 'Late', value: late, tone: 'text-[#6c79f0]' },
+    { label: 'Miss', value: miss, tone: 'text-rose-500' },
+  ]
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-md animate-in fade-in duration-300">
-      {/* Modal Container: Flex Column with Always Visible Footer */}
-      <div className="relative flex max-h-[85vh] w-[80vw] max-w-[620px] flex-col justify-between overflow-hidden rounded-[30px] bg-[#e1e5ee]/95 p-5 text-gray-900 shadow-[0_25px_70px_-15px_rgba(108,121,240,0.35)] backdrop-blur-2xl border border-white/80">
+      <div className="glass-shell relative flex w-full max-w-[390px] flex-col overflow-hidden rounded-3xl p-4 text-gray-900 animate-in zoom-in-95 duration-200 shadow-2xl">
         
-        {/* 1. Header (Fixed Top) */}
-        <div className="relative flex w-full shrink-0 items-center justify-center border-b border-gray-200/80 pb-2.5">
-          <div className="flex items-center gap-2.5 select-none">
-            <Trophy className="h-7 w-7 text-[#6c79f0]" strokeWidth={2.4} />
-            <h2 className="text-2xl font-black tracking-tight text-gray-900">
+        {/* Header */}
+        <header className="relative mb-2.5 flex items-center justify-center">
+          <div className="flex items-center gap-2 select-none">
+            <span className="flex size-8 items-center justify-center rounded-xl loomo-gradient text-white shadow-sm shadow-[#6c79f0]/20">
+              <Trophy className="size-4" strokeWidth={2.2} />
+            </span>
+            <h1 className="text-lg font-black tracking-tight text-gray-900">
               Scoreboard
-            </h2>
+            </h1>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="absolute right-0 top-0 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-gray-200/80 text-gray-500 transition hover:bg-gray-300 hover:text-gray-900"
-            title="Close and Revert"
+            aria-label="Close scoreboard"
+            className="absolute right-0 flex size-7.5 cursor-pointer items-center justify-center rounded-full bg-[#f0f2ff] text-gray-400 transition-colors hover:bg-indigo-100 hover:text-[#6c79f0]"
+            title="Close"
           >
-            <X size={20} />
+            <X className="size-3.5" />
           </button>
-        </div>
+        </header>
 
-        {/* 2. Content Body (Flexible Fit) */}
-        <div className="my-auto flex flex-1 flex-col justify-between gap-2.5 py-2">
+        {/* Stacked Cards Body (Rigid & Compact) */}
+        <div className="space-y-2">
           
-          {/* Dual Score Cards: HIT SCORE vs DURATION SCORE */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col items-center justify-center rounded-2xl bg-indigo-100/70 py-2.5 px-3 text-center shadow-xs">
-              <span className="text-sm font-extrabold tracking-[0.14em] text-[#6c79f0] select-none">
-                HIT SCORE
-              </span>
-              <span className="mt-0.5 text-4xl font-black tracking-tight text-indigo-950">
-                {accuracy}%
+          {/* Section 1: Hit Performance */}
+          <section className="glass-panel rounded-2xl p-3">
+            <div className="mb-2 flex items-end justify-between">
+              <div>
+                <p className="label-caps text-[#6c79f0] select-none">Hit Score</p>
+                <p className="text-4xl font-black leading-none tracking-tight text-gray-900 mt-0.5">
+                  {accuracy}
+                  <span className="text-2xl font-bold text-gray-400 ml-0.5">%</span>
+                </p>
+              </div>
+              <p className="label-caps text-gray-400 select-none pb-0.5">Hit Performance</p>
+            </div>
+
+            <div className="grid grid-cols-4 gap-1.5">
+              {hitMetrics.map((item) => (
+                <div key={item.label} className="rounded-xl bg-[#f0f2ff]/80 px-1 py-1.5 text-center">
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-gray-400 select-none">
+                    {item.label}
+                  </p>
+                  <p className={`text-base font-black leading-tight mt-0.5 ${item.tone}`}>
+                    {item.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Section 2: Duration Dynamics */}
+          <section className="glass-panel rounded-2xl p-3">
+            <div className="mb-2 flex items-end justify-between">
+              <div>
+                <p className="label-caps text-[#6c79f0] select-none">Duration Score</p>
+                <p className="text-4xl font-black leading-none tracking-tight text-gray-900 mt-0.5">
+                  {currentDurationScore}
+                  <span className="text-2xl font-bold text-gray-400 ml-0.5">%</span>
+                </p>
+              </div>
+              <span className="flex items-center gap-1 rounded-full bg-[#f0f2ff] px-2.5 py-0.5 text-[11px] font-bold text-[#6c79f0] select-none mb-0.5 shadow-2xs">
+                <Star className="size-3 fill-[#6c79f0] text-[#6c79f0]" />
+                Best {maxDurationScore}%
               </span>
             </div>
 
-            <div className="flex flex-col items-center justify-center rounded-2xl bg-purple-100/70 py-2.5 px-3 text-center shadow-xs">
-              <span className="text-sm font-extrabold tracking-[0.14em] text-purple-600 select-none">
-                DURATION SCORE
-              </span>
-              <span className="mt-0.5 text-4xl font-black tracking-tight text-purple-950">
-                {currentDurationScore}%
-              </span>
+            <p className="label-caps mb-1 text-gray-400 select-none">Segment Breakdown</p>
+            <div className="mb-2.5 flex h-6 gap-1 overflow-hidden rounded-full bg-gray-200/50 p-0.5">
+              {pctG > 0 && (
+                <div
+                  style={{ flexBasis: `${pctG}%` }}
+                  className="flex items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-white transition-all duration-500"
+                  title={`Correct Hold (tG): ${Math.round(pctG)}%`}
+                >
+                  {pctG >= 14 && `${Math.round(pctG)}%`}
+                </div>
+              )}
+              {pctY > 0 && (
+                <div
+                  style={{ flexBasis: `${pctY}%` }}
+                  className="flex items-center justify-center rounded-full bg-amber-400 text-[10px] font-bold text-white transition-all duration-500"
+                  title={`Early Press (tY): ${Math.round(pctY)}%`}
+                >
+                  {pctY >= 14 && `${Math.round(pctY)}%`}
+                </div>
+              )}
+              {pctP > 0 && (
+                <div
+                  style={{ flexBasis: `${pctP}%` }}
+                  className="flex items-center justify-center rounded-full bg-[#6c79f0] text-[10px] font-bold text-white transition-all duration-500"
+                  title={`Late Press (tP): ${Math.round(pctP)}%`}
+                >
+                  {pctP >= 14 && `${Math.round(pctP)}%`}
+                </div>
+              )}
+              {pctR > 0 && (
+                <div
+                  style={{ flexBasis: `${pctR}%` }}
+                  className="flex items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white transition-all duration-500"
+                  title={`Release Error (tR): ${Math.round(pctR)}%`}
+                >
+                  {pctR >= 14 && `${Math.round(pctR)}%`}
+                </div>
+              )}
             </div>
-          </div>
 
-          {/* AI Teacher Feedback Card */}
-          <div className="flex flex-col rounded-2xl border border-indigo-200/80 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 p-3 shadow-xs">
-            <div className="mb-1 flex items-center gap-1.5 select-none">
-              <Sparkles className="h-4 w-4 text-[#6c79f0]" />
-              <span className="text-xs font-black tracking-wider text-[#6c79f0] uppercase">
-                AI Coach Advice
+            <p className="label-caps mb-0.5 text-gray-400 select-none">Session History</p>
+            <div className="relative h-16 w-full">
+              <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="h-full w-full">
+                <defs>
+                  <linearGradient id="loomoSpark" x1="0" y1="1" x2="0" y2="0">
+                    <stop offset="0%" stopColor="#6c79f0" stopOpacity="0.02" />
+                    <stop offset="100%" stopColor="#6c79f0" stopOpacity="0.22" />
+                  </linearGradient>
+                </defs>
+                <path d={`${linePathD} L 100 100 L 0 100 Z`} fill="url(#loomoSpark)" />
+                <path
+                  d={linePathD}
+                  fill="none"
+                  stroke="#6c79f0"
+                  strokeWidth="2"
+                  vectorEffect="non-scaling-stroke"
+                  strokeLinecap="round"
+                />
+                {chartPoints.map((pt, idx) => (
+                  <circle
+                    key={idx}
+                    cx={pt.x}
+                    cy={pt.y}
+                    r="2"
+                    fill="#6c79f0"
+                    opacity={idx === 0 || idx === chartPoints.length - 1 ? 1 : 0.35}
+                  />
+                ))}
+              </svg>
+              <span className="absolute left-0 top-0 rounded-full bg-[#f0f2ff] px-2 py-0.5 text-[10px] font-bold text-[#6c79f0] select-none shadow-2xs">
+                {displayHistory[0]}%
+              </span>
+              <span className="absolute right-0 top-0 rounded-full bg-[#f0f2ff] px-2 py-0.5 text-[10px] font-bold text-[#6c79f0] select-none shadow-2xs">
+                {displayHistory[displayHistory.length - 1]}%
               </span>
             </div>
+          </section>
+
+          {/* Section 3: AI Coach Advice */}
+          <section className="rounded-2xl border border-[#6c79f0]/20 bg-[#f0f2ff]/80 p-2.5">
+            <p className="label-caps mb-1 flex items-center gap-1.5 text-[#6c79f0] select-none">
+              <Sparkles className="size-3.5" /> AI Coach Advice
+            </p>
             {isAiLoading ? (
-              <div className="flex h-7 w-full animate-pulse items-center gap-2 rounded-xl bg-gray-300/40 px-2.5">
-                <div className="h-2 w-3/4 rounded-full bg-gray-400/50" />
-                <div className="h-2 w-1/4 rounded-full bg-gray-400/30" />
+              <div className="flex h-5 w-full animate-pulse items-center gap-2 rounded-xl bg-indigo-100/50 px-2">
+                <div className="h-2 w-3/4 rounded-full bg-indigo-200/80" />
+                <div className="h-2 w-1/4 rounded-full bg-indigo-200/50" />
               </div>
             ) : (
-              <p className="text-xs font-extrabold leading-relaxed text-gray-800">
+              <p className="text-xs font-semibold leading-relaxed text-gray-800">
                 {displayedAiText}
                 {displayedAiText.length < (aiFeedback?.length ?? 0) && (
                   <span className="ml-0.5 inline-block h-3 w-0.5 animate-pulse bg-[#6c79f0] align-middle" />
                 )}
               </p>
             )}
-          </div>
+          </section>
 
-          {/* Continuous Duration Score Pill Bar */}
-          <div className="flex flex-col rounded-2xl bg-gray-200/50 p-2">
-            <span className="mb-1 text-xs font-extrabold tracking-[0.12em] text-gray-600 uppercase select-none px-1">
-              DURATION SEGMENT BREAKDOWN
-            </span>
-
-            {/* Extra Thick Pill Bar (h-7 / 28px) */}
-            <div className="flex h-7 w-full overflow-hidden rounded-full bg-gray-300/80 p-0.5 shadow-inner">
-              {pctG > 0 && (
-                <div
-                  className="flex h-full items-center justify-center rounded-l-full bg-green-500 text-xs font-black text-white transition-all duration-500"
-                  style={{ width: `${pctG}%` }}
-                  title={`Correct Hold (tG): ${Math.round(pctG)}%`}
-                >
-                  {pctG >= 12 && `${Math.round(pctG)}%`}
-                </div>
-              )}
-              {pctY > 0 && (
-                <div
-                  className="flex h-full items-center justify-center bg-amber-400 text-xs font-black text-amber-950 transition-all duration-500"
-                  style={{ width: `${pctY}%` }}
-                  title={`Early Press (tY): ${Math.round(pctY)}%`}
-                >
-                  {pctY >= 12 && `${Math.round(pctY)}%`}
-                </div>
-              )}
-              {pctP > 0 && (
-                <div
-                  className="flex h-full items-center justify-center bg-purple-500 text-xs font-black text-white transition-all duration-500"
-                  style={{ width: `${pctP}%` }}
-                  title={`Late Press (tP): ${Math.round(pctP)}%`}
-                >
-                  {pctP >= 12 && `${Math.round(pctP)}%`}
-                </div>
-              )}
-              {pctR > 0 && (
-                <div
-                  className="flex h-full items-center justify-center rounded-r-full bg-rose-500 text-xs font-black text-white transition-all duration-500"
-                  style={{ width: `${pctR}%` }}
-                  title={`Release Error (tR): ${Math.round(pctR)}%`}
-                >
-                  {pctR >= 12 && `${Math.round(pctR)}%`}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* 5 Soft Widget Containers */}
-          <div className="grid grid-cols-5 gap-2">
-            <div className="flex flex-col items-center justify-center rounded-2xl bg-green-500/15 px-1 py-2 text-center">
-              <span className="text-[11px] font-extrabold tracking-[0.1em] text-green-800 select-none">
-                PERFECT
-              </span>
-              <span className="mt-0.5 text-2xl font-black text-green-900">{perfect}</span>
-            </div>
-
-            <div className="flex flex-col items-center justify-center rounded-2xl bg-amber-500/15 px-1 py-2 text-center">
-              <span className="text-[11px] font-extrabold tracking-[0.1em] text-amber-800 select-none">
-                EARLY
-              </span>
-              <span className="mt-0.5 text-2xl font-black text-amber-900">{early}</span>
-            </div>
-
-            <div className="flex flex-col items-center justify-center rounded-2xl bg-purple-500/15 px-1 py-2 text-center">
-              <span className="text-[11px] font-extrabold tracking-[0.1em] text-purple-800 select-none">
-                LATE
-              </span>
-              <span className="mt-0.5 text-2xl font-black text-purple-900">{late}</span>
-            </div>
-
-            <div className="flex flex-col items-center justify-center rounded-2xl bg-rose-500/15 px-1 py-2 text-center">
-              <span className="text-[11px] font-extrabold tracking-[0.1em] text-rose-800 select-none">
-                MISS
-              </span>
-              <span className="mt-0.5 text-2xl font-black text-rose-900">{miss}</span>
-            </div>
-
-            <div className="flex flex-col items-center justify-center rounded-2xl bg-indigo-500/15 px-1 py-2 text-center">
-              <span className="text-[11px] font-extrabold tracking-[0.1em] text-indigo-800 select-none">
-                STREAK
-              </span>
-              <span className="mt-0.5 text-2xl font-black text-indigo-900">{streak}</span>
-            </div>
-          </div>
-
-          {/* Modern loomo Point Graph Session Duration History */}
-          <div className="flex flex-col rounded-2xl bg-gray-200/50 p-2.5 shadow-inner">
-            <div className="mb-1 flex items-center justify-between">
-              <span className="text-[11px] font-extrabold tracking-[0.12em] text-gray-600 select-none">
-                SESSION DURATION HISTORY
-              </span>
-              
-              {/* Best Metadata Pill */}
-              <div className="flex items-center gap-1.5 rounded-full bg-amber-400/20 px-2.5 py-0.5 text-[11px] font-extrabold text-amber-800">
-                <Star size={11} className="fill-amber-500 text-amber-500" />
-                <span>BEST: {maxDurationScore}%</span>
-              </div>
-            </div>
-
-            {/* SVG Point Graph with Dashed Lines & loomo Bright Gradient Fill */}
-            <div className="relative h-20 w-full">
-              <svg className="h-full w-full overflow-visible" viewBox="0 0 400 75" preserveAspectRatio="none">
-                <defs>
-                  {/* Bright loomo Gradient Fill under connecting lines */}
-                  <linearGradient id="loomoAreaGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#6c79f0" stopOpacity="0.45" />
-                    <stop offset="100%" stopColor="#6c79f0" stopOpacity="0.02" />
-                  </linearGradient>
-                </defs>
-
-                {/* Bright loomo Fill under connecting line */}
-                <path d={areaPathD} fill="url(#loomoAreaGradient)" />
-
-                {/* Vertical Dashed Drop Lines under each point */}
-                {chartPoints.map((pt, i) => (
-                  <line
-                    key={`dash-${i}`}
-                    x1={pt.x}
-                    y1={pt.y}
-                    x2={pt.x}
-                    y2="68"
-                    stroke="#6c79f0"
-                    strokeWidth="1.5"
-                    strokeDasharray="3 3"
-                    opacity="0.35"
-                  />
-                ))}
-
-                {/* Dashed Connecting Line between scores */}
-                {chartPoints.length > 1 && (
-                  <path
-                    d={linePathD}
-                    fill="none"
-                    stroke="#6c79f0"
-                    strokeWidth="2.8"
-                    strokeDasharray="6 4"
-                  />
-                )}
-
-                {/* Glowing Data Point Circles & Score Labels */}
-                {chartPoints.map((pt, i) => (
-                  <g key={`pt-${i}`}>
-                    {/* Score Text above point */}
-                    <text
-                      x={pt.x}
-                      y={pt.y - 7}
-                      textAnchor="middle"
-                      className="fill-gray-900 text-[10px] font-black"
-                    >
-                      {pt.val}%
-                    </text>
-
-                    {/* Point Circle */}
-                    <circle
-                      cx={pt.x}
-                      cy={pt.y}
-                      r={pt.isPeak ? '5.5' : '4.5'}
-                      fill={pt.isPeak ? '#f59e0b' : '#6c79f0'}
-                      stroke="#ffffff"
-                      strokeWidth="2"
-                      className="transition-all duration-300"
-                    />
-                  </g>
-                ))}
-              </svg>
-            </div>
-          </div>
         </div>
 
-        {/* 3. Footer Controls: Practice Recommended Part & Replay */}
-        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-gray-200/80 pt-3">
+        {/* Footer Actions */}
+        <footer className="mt-2.5 flex items-center gap-2">
           <button
+            type="button"
             disabled={isCalculating || !recommendedSegment}
             onClick={() => {
               if (recommendedSegment && onPracticeRecommended) {
                 onPracticeRecommended(recommendedSegment)
               }
             }}
-            className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#6c79f0] to-purple-600 px-4 py-2.5 text-xs font-extrabold text-white shadow-md shadow-[#6c79f0]/25 transition hover:scale-[1.02] active:scale-95 disabled:cursor-not-allowed disabled:opacity-75 sm:text-sm"
+            className="loomo-gradient flex h-10.5 flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl text-xs sm:text-[13px] font-bold text-white shadow-md shadow-[#6c79f0]/25 transition-transform active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-75"
           >
             {isCalculating ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin text-white" />
+                <Loader2 className="size-4 animate-spin text-white" />
                 <span>Detecting Practice Part...</span>
               </>
             ) : (
-              <>
-                <Target className="h-4 w-4 text-white" />
-                <span>
-                  Practice Recommended Part (
-                  {formatTime(recommendedSegment?.start ?? 0)} -{' '}
-                  {formatTime(recommendedSegment?.end ?? 0)})
-                </span>
-              </>
+              <span>
+                Practice Recommended Part (
+                {formatTime(recommendedSegment?.start ?? 0)} –{' '}
+                {formatTime(recommendedSegment?.end ?? 0)})
+              </span>
             )}
           </button>
           <button
+            type="button"
             onClick={onReplay}
-            className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-2xl bg-gray-200/80 text-gray-700 transition hover:bg-gray-300 hover:text-gray-900 active:scale-95"
+            aria-label="Replay session"
+            className="flex size-10.5 shrink-0 cursor-pointer items-center justify-center rounded-2xl bg-[#f0f2ff] text-[#6c79f0] transition-colors hover:bg-indigo-100 active:scale-95"
             title="Replay Song"
           >
-            <RotateCcw size={18} />
+            <RotateCcw className="size-4.5" />
           </button>
-        </div>
+        </footer>
 
       </div>
     </div>

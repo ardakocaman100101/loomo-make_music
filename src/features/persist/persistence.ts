@@ -96,73 +96,146 @@ export async function addFolder(): Promise<void> {
   }
 }
 
-export async function addUploadedSongs(files: File[]): Promise<string> {
-  if (files.length === 0) throw new Error('No files provided')
+export function extractCommonTitle(fileNames: string[]): string {
+  const cleanNames = fileNames.map((f) => f.replace(/\.[^/.]+$/, ''))
+  if (cleanNames.length === 0) return 'Untitled Song'
+  if (cleanNames.length === 1) return cleanNames[0]
 
-  const isMultiFile = files.length > 1
-  let title = files[0].name.replace(/\.[^/.]+$/, '')
-
-  if (isMultiFile) {
-    const firstFile = files[0]
-    if (firstFile.webkitRelativePath) {
-      const parts = firstFile.webkitRelativePath.split('/')
-      if (parts.length > 1) {
-        // Use the root folder name as the song title
-        title = parts[0]
-      }
+  let prefix = cleanNames[0]
+  for (let i = 1; i < cleanNames.length; i++) {
+    while (!cleanNames[i].toLowerCase().startsWith(prefix.toLowerCase())) {
+      prefix = prefix.substring(0, prefix.length - 1)
+      if (!prefix) break
     }
   }
 
-  const currentUploaded = store.get(uploadedSongsAtom)
-  const existing = currentUploaded.find((s) => s.title === title)
+  // Clean trailing delimiters and track suffixes like _Track, -part, etc.
+  const stripped = prefix
+    .replace(/[_\-\s]+(track|tr|part|pt)?[0-9_\-\s]*$/i, '')
+    .replace(/[_\-\s]+$/, '')
+    .trim()
 
-  if (existing) {
-    return existing.id
+  return stripped || cleanNames[0]
+}
+
+export function getUniqueSongTitle(desiredTitle: string, existingTitles: string[]): string {
+  const titlesSet = new Set(existingTitles.map((t) => t.trim().toLowerCase()))
+  const cleanBase = desiredTitle.trim()
+
+  if (!titlesSet.has(cleanBase.toLowerCase())) {
+    return cleanBase
   }
 
-  // Sort files and parse them
+  let suffix = 1
+  while (titlesSet.has(`${cleanBase} (${suffix})`.toLowerCase())) {
+    suffix++
+  }
+  return `${cleanBase} (${suffix})`
+}
+
+export async function addUploadedSongs(files: File[]): Promise<string> {
+  const validFiles = files.filter(
+    (f) =>
+      !f.name.startsWith('.') &&
+      !f.name.startsWith('__MACOSX') &&
+      f.name !== 'Thumbs.db' &&
+      f.name !== 'desktop.ini',
+  )
+
+  if (validFiles.length === 0) throw new Error('No valid MIDI files provided')
+
+  // 1. Folder Validation: Check for subdirectories
+  const hasSubfolders = validFiles.some((f) => {
+    if (!f.webkitRelativePath) return false
+    const parts = f.webkitRelativePath.split('/')
+    return parts.length > 2
+  })
+  if (hasSubfolders) {
+    throw new Error('The folder must not contain subfolders. All .mid files must be directly in the root folder.')
+  }
+
+  // 2. Folder Validation: Check for non-MIDI files
+  const hasNonMidi = validFiles.some((f) => {
+    const ext = f.name.toLowerCase()
+    return !ext.endsWith('.mid') && !ext.endsWith('.midi')
+  })
+  if (hasNonMidi) {
+    throw new Error('The selected folder contains non-MIDI files. Only .mid and .midi files are permitted.')
+  }
+
+  // 3. Determine Candidate Song Title
+  const isMultiFile = validFiles.length > 1
+  let rawTitle = ''
+
+  if (isMultiFile) {
+    const firstFile = validFiles[0]
+    if (firstFile.webkitRelativePath) {
+      const parts = firstFile.webkitRelativePath.split('/')
+      if (parts.length > 1 && parts[0].trim()) {
+        rawTitle = parts[0].trim()
+      }
+    }
+    if (!rawTitle) {
+      rawTitle = extractCommonTitle(validFiles.map((f) => f.name))
+    }
+  } else {
+    rawTitle = validFiles[0].name.replace(/\.[^/.]+$/, '')
+  }
+
+  if (!rawTitle) {
+    rawTitle = 'Uploaded Song'
+  }
+
+  // 4. Ensure Unique Title (append (1), (2), etc. if duplicate exists)
+  const currentUploaded = store.get(uploadedSongsAtom) || []
+  const localSongs = Array.from(store.get(localSongsAtom).values()).flatMap((x) => x)
+  const allExistingTitles = [...currentUploaded, ...localSongs].map((s) => s.title).filter(Boolean)
+  const uniqueTitle = getUniqueSongTitle(rawTitle, allExistingTitles)
+
+  // 5. Parse and merge MIDI files
   const parsedSongs = await Promise.all(
-    files.map(async (file) => {
+    validFiles.map(async (file) => {
       const buffer = await file.arrayBuffer()
       const bytes = new Uint8Array(buffer)
       return { file, song: parseMidi(bytes) }
     }),
   )
 
-  // Rank by earliest note time
-  parsedSongs.sort((a, b) => {
-    const firstNoteA = Math.min(...a.song.notes.map((n) => n.time)) || 0
-    const firstNoteB = Math.min(...b.song.notes.map((n) => n.time)) || 0
-    return firstNoteA - firstNoteB
-  })
-
   const id = crypto.randomUUID()
 
-  // For a single file, we behave as before.
-  // For multiple files, we "merge" them into a sequential progressive song.
-  // We'll flatten them but keep track of original file boundaries via track IDs.
   let mergedDuration = 0
   const mergedNotes: SongNote[] = []
   const mergedTracks: Tracks = {}
-
   let trackOffset = 0
 
   parsedSongs.forEach(({ file, song }) => {
-    // Re-index tracks
+    const cleanFileName = file.name.replace(/\.[^/.]+$/, '')
     const trackMapping: { [old: number]: number } = {}
-    Object.keys(song.tracks).forEach((oldIdStr) => {
+    const trackKeys = Object.keys(song.tracks)
+
+    trackKeys.forEach((oldIdStr) => {
       const oldId = parseInt(oldIdStr)
       const newId = trackOffset++
       trackMapping[oldId] = newId
-      mergedTracks[newId] = song.tracks[oldIdStr]
-      // Tag tracks with metadata if needed
-      mergedTracks[newId].name = `${song.tracks[oldIdStr].name || 'Track'} (${file.name})`
+      mergedTracks[newId] = { ...song.tracks[oldIdStr] }
+
+      // Set clean track name derived from filename without extension
+      if (isMultiFile) {
+        if (trackKeys.length > 1) {
+          const originalName = song.tracks[oldIdStr].name
+          mergedTracks[newId].name = originalName ? `${cleanFileName} - ${originalName}` : cleanFileName
+        } else {
+          mergedTracks[newId].name = cleanFileName
+        }
+      } else {
+        mergedTracks[newId].name = song.tracks[oldIdStr].name || cleanFileName
+      }
     })
 
     song.notes.forEach((note) => {
       mergedNotes.push({
         ...note,
-        track: trackMapping[note.track],
+        track: trackMapping[note.track] !== undefined ? trackMapping[note.track] : note.track,
       })
     })
 
@@ -171,59 +244,47 @@ export async function addUploadedSongs(files: File[]): Promise<string> {
     }
   })
 
-  // Use the measures and bpms from the longest song to represent the timeline
+  // Use measures and bpms from longest song to represent timeline
   let maxDurationSong = parsedSongs[0].song
   parsedSongs.forEach(({ song }) => {
     if (song.duration > maxDurationSong.duration) {
       maxDurationSong = song
     }
   })
-  const mergedMeasures = maxDurationSong.measures
-  const mergedBpms = maxDurationSong.bpms
+
+  const mergedMeasures = maxDurationSong.measures || []
+  const mergedBpms = maxDurationSong.bpms || []
 
   const metadata: SongMetadata = {
     id,
-    title,
+    title: uniqueTitle,
     file: id,
     source: 'upload',
     difficulty: 0,
     duration: mergedDuration,
   }
 
-  // We need to store this merged "Song" object in Storage because it's non-standard
-  // persistence.ts currently relies on re-parsing the file in getUploadedSong (not shown but inferred)
-  // Actually addUploadedSong stores the File in uploadedFilesAtom.
-  // If we merge, we might want to store the merged Song in Storage.
-
-  // Create a synthetic "Merged Song" byte array? (Hard)
-  // Or just store the JSON result? (Easier)
-  // persistence.ts doesn't seem to have a `getSong` function, it's in the player probably.
-
   const newUploaded = [...currentUploaded, metadata]
   store.set(uploadedSongsAtom, newUploaded)
-  idb.set('UPLOADED_SONGS', newUploaded)
+  await idb.set('UPLOADED_SONGS', newUploaded)
 
-  // Store the FIRST file as the primary handle for consistency if needed,
-  // but we'll manually store the merged song in Storage.
   const currentFiles = store.get(uploadedFilesAtom)
   const newFiles = new Map(currentFiles)
-  newFiles.set(id, files[0]) // Just for ID reference
+  newFiles.set(id, validFiles[0])
   store.set(uploadedFilesAtom, newFiles)
 
-  // Store the pre-parsed merged song so the player can just load it.
-  const songData = {
+  const songData: Partial<Song> = {
     tracks: mergedTracks,
     duration: mergedDuration,
     notes: mergedNotes,
     measures: mergedMeasures,
     bpms: mergedBpms,
-    ppq: parsedSongs[0].song.ppq,
-    timeSignature: parsedSongs[0].song.timeSignature,
-    keySignature: parsedSongs[0].song.keySignature,
+    ppq: maxDurationSong.ppq || 480,
+    timeSignature: maxDurationSong.timeSignature,
+    keySignature: maxDurationSong.keySignature,
   }
-  Storage.set(id, songData)
 
-  // Persist to IndexedDB so it's available in future sessions
+  Storage.set(id, songData)
   await idb.set(`SONG_DATA_${id}`, songData)
 
   return id

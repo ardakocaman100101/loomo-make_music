@@ -31,4 +31,7 @@ Check the ticket's **Value** (for tasks) or **Severity** (for bugs) property bef
 * Update/overwrite existing implementation notes directly. **DO NOT** add new "Update #1" or append redundant "Update" headers when fixing bugs afterwards.
 
 ### 4. Status Transition Constraints
-* **IMPORTANT:** The Developer Agent **MUST NOT** shift ticket status to **Test**. Leave ticket status in **Implementation** and notify that code is ready for testing.
+* **MANDATORY STATUS RULE:** The Developer Agent **MUST NOT** set ticket status to **Done**, **Fixed**, or **Test**.
+* When starting a ticket, transition status from **TODO** / **New** to **Implementation** (or **In progress** for bugs).
+* After finishing code implementation, build verification, and implementation notes, the ticket status **MUST REMAIN in `Implementation`** (or `In progress`).
+* Only the Tester Agent or the Boss (User) can verify and transition a ticket to **Done** / **Fixed**.

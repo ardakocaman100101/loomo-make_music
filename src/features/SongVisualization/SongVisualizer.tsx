@@ -1,4 +1,5 @@
 import { Canvas } from '@/components'
+import midiState from '@/features/midi'
 import * as touchscroll from '@/features/SongVisualization/touchscroll'
 import { useSize } from '@/hooks'
 import { Hand, HandSettings, Song, SongConfig } from '@/types'
@@ -43,6 +44,12 @@ function CanvasRenderer({
   useEffect(() => {
     waitForImages().then(() => (isReady.current = true))
   })
+
+  useEffect(() => {
+    if (song) {
+      midiState.anchorToSong(song)
+    }
+  }, [song])
 
   const effectivePps = useMemo(() => {
     const computedPps = getOptimalPps(song, pps)
