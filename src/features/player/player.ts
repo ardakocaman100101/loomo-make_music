@@ -872,6 +872,7 @@ export class Player {
     this.playing = []
     this.lateNotes.clear()
     this.store.set(this.range, null)
+    this.metronomeLastPlayedTick = null
     const backingTrack = this.store.get(this.song)?.backing
     if (backingTrack) {
       backingTrack.currentTime = 0
@@ -885,6 +886,7 @@ export class Player {
     this.keyPressTimes.clear()
     this.lateNotes.clear()
     this.pressFeedback.clear()
+    this.metronomeLastPlayedTick = null
     this.store.set(this.score.early, 0)
     this.store.set(this.score.late, 0)
     this.store.set(this.score.missed, 0)

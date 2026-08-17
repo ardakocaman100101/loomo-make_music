@@ -8,7 +8,7 @@ export interface PracticeSegment {
 /**
  * Asynchronously calculates a recommended practice loop segment for weak song parts.
  * Evaluates timing deviation, hold duration accuracy, relative error density,
- * mid-performance give-ups, and clamps segment length between 10% and 50% of song duration.
+ * mid-performance give-ups, and clamps segment length between 10% and 35% of song duration.
  */
 export async function detectPracticeSegmentAsync(
   songNotes: SongNote[],
@@ -54,7 +54,7 @@ export function detectPracticeSegment(
   }
 
   const minDuration = songDuration * 0.1
-  const maxDuration = songDuration * 0.5
+  const maxDuration = songDuration * 0.35
 
   if (!songNotes || songNotes.length === 0) {
     return { start: 0, end: Math.min(songDuration, minDuration) }
@@ -194,10 +194,7 @@ export function detectPracticeSegment(
       start = Math.max(0, end - minDuration)
     }
 
-    return {
-      start: Math.round(start * 100) / 100,
-      end: Math.round(end * 100) / 100,
-    }
+    return snapToMusicalBoundaries(start, end, sortedNotes, songDuration, minDuration, maxDuration)
   }
 
   // 5. Finalize & Clamp segment duration between 10% and 50%
@@ -216,9 +213,112 @@ export function detectPracticeSegment(
     rawEnd = rawStart + maxDuration
   }
 
-  // Ensure within [0, songDuration]
-  const finalStart = Math.max(0, Math.min(songDuration - minDuration, rawStart))
-  const finalEnd = Math.min(songDuration, Math.max(finalStart + minDuration, rawEnd))
+  return snapToMusicalBoundaries(rawStart, rawEnd, sortedNotes, songDuration, minDuration, maxDuration)
+}
+
+/**
+ * Snaps raw time interval [rawStart, rawEnd] to musical sequence boundaries (note attack & release)
+ * while strictly maintaining length constraints [minDuration, maxDuration].
+ *
+ * Formula:
+ * 1. Start Attack Snap:
+ *    t_start = min(n.time) for all n where (n.time <= rawStart < n.time + n.duration)
+ *              or next note attack if rawStart falls in silence.
+ * 2. End Release Snap:
+ *    t_end   = max(n.time + n.duration) for all n where (n.time < rawEnd and n.time + n.duration >= rawEnd)
+ * 3. Range Constraint:
+ *    minDuration <= (t_end - t_start) <= maxDuration
+ */
+function snapToMusicalBoundaries(
+  rawStart: number,
+  rawEnd: number,
+  sortedNotes: SongNote[],
+  songDuration: number,
+  minDuration: number,
+  maxDuration: number,
+): PracticeSegment {
+  if (sortedNotes.length === 0) {
+    return {
+      start: Math.round(rawStart * 100) / 100,
+      end: Math.round(rawEnd * 100) / 100,
+    }
+  }
+
+  // 1. Snap Start to note attack
+  let snappedStart = rawStart
+  const overlappingStartNotes = sortedNotes.filter(
+    (n) => n.time <= rawStart && rawStart < n.time + n.duration,
+  )
+
+  if (overlappingStartNotes.length > 0) {
+    // If inside a sounding note/chord, snap to its initial attack timestamp
+    snappedStart = Math.min(...overlappingStartNotes.map((n) => n.time))
+  } else {
+    // If in silence, snap to the next upcoming note's attack
+    const nextNote = sortedNotes.find((n) => n.time >= rawStart)
+    if (nextNote) {
+      snappedStart = nextNote.time
+    }
+  }
+
+  // 2. Snap End to complete note duration (never cut mid-sustain)
+  let snappedEnd = rawEnd
+  const overlappingEndNotes = sortedNotes.filter(
+    (n) => n.time < rawEnd && n.time + n.duration >= rawEnd,
+  )
+
+  if (overlappingEndNotes.length > 0) {
+    snappedEnd = Math.max(...overlappingEndNotes.map((n) => n.time + n.duration))
+  } else {
+    // If in silence, find the completion time of the preceding sounding note
+    const precedingNotes = sortedNotes.filter((n) => n.time < rawEnd)
+    if (precedingNotes.length > 0) {
+      const maxPrecedingEnd = Math.max(
+        ...precedingNotes.map((n) => n.time + n.duration),
+      )
+      if (maxPrecedingEnd > snappedStart) {
+        snappedEnd = maxPrecedingEnd
+      }
+    }
+  }
+
+  // 3. Enforce min/max duration constraints with musical note alignment
+  let length = snappedEnd - snappedStart
+
+  if (length < minDuration) {
+    // Extend end to include full subsequent notes until minDuration is satisfied
+    const extendedNote = sortedNotes.find(
+      (n) => n.time + n.duration >= snappedStart + minDuration,
+    )
+    if (extendedNote) {
+      snappedEnd = Math.min(songDuration, extendedNote.time + extendedNote.duration)
+    } else {
+      snappedEnd = Math.min(songDuration, snappedStart + minDuration)
+    }
+
+    length = snappedEnd - snappedStart
+    if (length < minDuration) {
+      // If at the end of the song, push start backward to earlier note attacks
+      const earlierNote = [...sortedNotes]
+        .reverse()
+        .find((n) => n.time <= snappedEnd - minDuration)
+      snappedStart = earlierNote ? earlierNote.time : Math.max(0, snappedEnd - minDuration)
+    }
+  } else if (length > maxDuration) {
+    // Contract end to the latest note completing within maxDuration
+    const notesInMax = sortedNotes.filter(
+      (n) => n.time >= snappedStart && n.time + n.duration <= snappedStart + maxDuration,
+    )
+    if (notesInMax.length > 0) {
+      snappedEnd = Math.max(...notesInMax.map((n) => n.time + n.duration))
+    } else {
+      snappedEnd = snappedStart + maxDuration
+    }
+  }
+
+  // Bound safety
+  const finalStart = Math.max(0, Math.min(songDuration, snappedStart))
+  const finalEnd = Math.max(finalStart, Math.min(songDuration, snappedEnd))
 
   return {
     start: Math.round(finalStart * 100) / 100,

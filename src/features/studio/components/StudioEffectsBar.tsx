@@ -32,10 +32,10 @@ export const HardwareControlMatrix: React.FC = () => {
   const formatResonance = (Q: number) => `Q:${Q.toFixed(1)}`
 
   return (
-    <div className="flex shrink-0 items-center gap-4">
+    <div className="flex shrink-0 items-center gap-2.5">
       {/* 1. Discrete Knob Box (Filter Cutoff, Distortion, Bass Boost, Delay Time) */}
-      <div className="flex h-32 flex-col justify-center rounded-2xl border border-white/10 bg-[#16161d] px-4.5 py-2.5 shadow-xl backdrop-blur-md">
-        <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+      <div className="flex h-28 flex-col justify-center rounded-xl border border-white/10 bg-[#16161d] px-3 py-1.5 shadow-xl backdrop-blur-md">
+        <div className="grid grid-cols-2 gap-x-2.5 gap-y-1">
           <RotaryKnob
             label="Cutoff"
             value={fxState.cutoff}
@@ -75,8 +75,8 @@ export const HardwareControlMatrix: React.FC = () => {
       </div>
 
       {/* 2. Discrete Fader Box (Volume, Reverb, Delay, Resonance) */}
-      <div className="flex h-32 flex-col justify-center rounded-2xl border border-white/10 bg-[#16161d] px-4.5 py-2.5 shadow-xl backdrop-blur-md">
-        <div className="flex items-center gap-3.5">
+      <div className="flex h-28 flex-col justify-center rounded-xl border border-white/10 bg-[#16161d] px-3 py-1.5 shadow-xl backdrop-blur-md">
+        <div className="flex items-center gap-2">
           <VerticalFader
             label="Volume"
             value={fxState.volume}

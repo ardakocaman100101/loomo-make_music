@@ -139,9 +139,19 @@ export function renderFallingNote(
 
   ctx.save()
 
+  const isReverse = state.visualization === 'reverse-waterfall'
+  const actualLength = Math.abs(posY - endY)
+  // Ensure a minimum visual capsule height so text and geometry never invert or collapse
+  const minVisualLength = Math.max(width * 1.15, circleRadius * 2 + 8, 28)
+  const visualLength = Math.max(actualLength, minVisualLength)
+  const drawnTopY = isReverse
+    ? posY > endY
+      ? posY - visualLength
+      : posY + visualLength
+    : posY - visualLength
+
   const circleCenterX = posX + width / 2
   const circleCenterY = posY - circleRadius
-  const drawnTopY = endY
   const r = circleRadius * 0.4
 
   // --- Geometry: rounded-trapezoid perimeter ---
@@ -297,35 +307,40 @@ export function renderFallingNote(
     const tileWidth = Math.abs(pBottomRight.x - pBottomLeft.x)
     const tileHeight = Math.abs(pBottomCenter.y - pTopCenter.y)
 
+    // Position text at the visual vertical centroid of the capsule body
+    const textCenterLocalY = posY - visualLength * 0.48
+    const pTextCenter = projectPoint(circleCenterX, textCenterLocalY, state)
+
     ctx.fillStyle = 'white'
     ctx.textBaseline = 'middle'
     ctx.textAlign = 'center'
 
-    const maxAllowedWidth = tileWidth * 0.75
-    const maxAllowedHeight = Math.max(12, tileHeight * 0.65)
+    // Maintain consistent, legible font size
+    const maxAllowedWidth = tileWidth * 0.72
+    const maxAllowedHeight = tileHeight * 0.55
     let { fontPx } = getOptimalFontSize(ctx, noteText, TEXT_FONT, maxAllowedWidth)
-    fontPx = Math.min(fontPx, maxAllowedWidth, maxAllowedHeight)
+    fontPx = Math.max(12, Math.min(fontPx, maxAllowedWidth, maxAllowedHeight, 18))
 
     if (noteText.includes('#')) {
       const letter = noteText.replace('#', '')
       const letterSize = fontPx
-      const sharpSize = fontPx * 0.65
+      const sharpSize = fontPx * 0.68
 
-      ctx.font = `bold ${letterSize}px ui-sans-serif, system-ui, sans-serif`
+      ctx.font = `bold ${letterSize}px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif`
       const letterW = ctx.measureText(letter).width
-      ctx.font = `bold ${sharpSize}px ui-sans-serif, system-ui, sans-serif`
+      ctx.font = `bold ${sharpSize}px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif`
       const sharpW = ctx.measureText('#').width
 
       const totalW = letterW + sharpW
-      const startX = pCenter.x - totalW / 2
+      const startX = pTextCenter.x - totalW / 2
 
-      ctx.font = `bold ${letterSize}px ui-sans-serif, system-ui, sans-serif`
-      ctx.fillText(letter, startX + letterW / 2, pCenter.y + letterSize * 0.05)
-      ctx.font = `bold ${sharpSize}px ui-sans-serif, system-ui, sans-serif`
-      ctx.fillText('#', startX + letterW + sharpW / 2, pCenter.y - letterSize * 0.12)
+      ctx.font = `bold ${letterSize}px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif`
+      ctx.fillText(letter, startX + letterW / 2, pTextCenter.y + letterSize * 0.04)
+      ctx.font = `bold ${sharpSize}px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif`
+      ctx.fillText('#', startX + letterW + sharpW / 2, pTextCenter.y - letterSize * 0.12)
     } else {
-      ctx.font = `bold ${fontPx}px ui-sans-serif, system-ui, sans-serif`
-      ctx.fillText(noteText, pCenter.x, pCenter.y + fontPx * 0.05)
+      ctx.font = `bold ${fontPx}px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif`
+      ctx.fillText(noteText, pTextCenter.x, pTextCenter.y + fontPx * 0.04)
     }
   }
 

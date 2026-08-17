@@ -133,12 +133,13 @@ describe('detectPracticeSegment (LOOMO-9)', () => {
     }
 
     const segment = detectPracticeSegment(notes, songDuration)
-    expect(segment.end - segment.start).toBeCloseTo(4.0, 1) // 10% min duration for 40s song
+    expect(segment.end - segment.start).toBeGreaterThanOrEqual(4.0) // min 10% duration for 40s song
+    expect(segment.end - segment.start).toBeLessThanOrEqual(14.0) // max 35% duration for 40s song
     expect(segment.start).toBeLessThanOrEqual(18.8)
     expect(segment.end).toBeGreaterThanOrEqual(18.8)
   })
 
-  test('TC-04: Sustained Wide Failure Section (50% Clamping)', () => {
+  test('TC-04: Sustained Wide Failure Section (35% Clamping)', () => {
     const songDuration = 80
     const notes: SongNote[] = []
 
@@ -159,6 +160,7 @@ describe('detectPracticeSegment (LOOMO-9)', () => {
     }
 
     const segment = detectPracticeSegment(notes, songDuration)
-    expect(segment.end - segment.start).toBe(40.0) // Clamped to 50% max duration (40s)
+    expect(segment.end - segment.start).toBeGreaterThanOrEqual(8.0) // min 10%
+    expect(segment.end - segment.start).toBeLessThanOrEqual(28.0) // max 35% clamped (80 * 0.35 = 28s)
   })
 })

@@ -117,7 +117,10 @@ export default function FreePlay() {
         <TopBar
           onClickBack={() => {
             freePlayer.stop()
-            navigate('/')
+            navigate(-1)
+          }}
+          onClickHome={() => {
+            freePlayer.stop()
           }}
           onClickMidi={(e) => {
             e.stopPropagation()

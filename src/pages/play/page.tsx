@@ -278,11 +278,7 @@ export default function PlaySongPage() {
   const handleReplaySong = () => {
     setIsCompletedModalOpen(false)
     setHasDismissedModal(false)
-    player.pause()
-    player.seek(0)
-    setTimeout(() => {
-      player.play()
-    }, 2000)
+    player.restart()
   }
 
   const handlePracticeRecommended = (segment: { start: number; end: number }) => {
@@ -291,6 +287,7 @@ export default function PlaySongPage() {
     player.pause()
     player.setRange(segment)
     player.seek(segment.start)
+    player.resetStats_()
   }
 
   useOnUnmount(() => player.stop())
@@ -634,6 +631,9 @@ export default function PlaySongPage() {
                 player.stop()
                 navigate(-1)
               }}
+              onClickHome={() => {
+                player.stop()
+              }}
               onClickMidi={(e) => {
                 e.stopPropagation()
                 setMidiModal(!isMidiModalOpen)
@@ -722,17 +722,24 @@ export default function PlaySongPage() {
               <div className="w-20" />
             </div>
 
-            {statsVisible && <StatsPopup />}
-            <div className="pointer-events-auto absolute top-20 left-4 z-30 flex flex-col gap-4">
-              <div className="flex items-stretch gap-3">
+            {/* Right: Score Popup (Proportionally scales down and vanishes on micro viewports) */}
+            {statsVisible && (
+              <div className="hidden transition-all duration-200 md:block md:scale-90 md:origin-top-right lg:scale-95 xl:scale-100 [@media(max-height:520px)]:hidden">
+                <StatsPopup />
+              </div>
+            )}
+
+            {/* Left: Tempo, Zoom & TrackHUD (Proportionally scales down and vanishes on micro viewports) */}
+            <div className="pointer-events-auto absolute top-20 left-4 z-30 hidden flex-col gap-2.5 transition-all duration-200 md:flex md:scale-90 md:origin-top-left lg:scale-95 xl:scale-100 xl:gap-4 [@media(max-height:520px)]:hidden">
+              <div className="flex items-stretch gap-2 sm:gap-2.5 lg:gap-3">
                 {/* BPM Ticket */}
-                <div className="flex w-[168px] flex-col justify-between rounded-[20px] border border-white/5 bg-black/45 p-3 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15),0_8px_32px_0_rgba(0,0,0,0.37)] backdrop-blur-xl">
-                  <span className="mb-1.5 text-center text-[12px] font-black tracking-[0.18em] text-[#6c79f0] uppercase select-none">
+                <div className="flex w-[140px] flex-col justify-between rounded-2xl border border-white/5 bg-black/45 p-2.5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15),0_8px_32px_0_rgba(0,0,0,0.37)] backdrop-blur-xl sm:w-[155px] lg:w-[168px] lg:rounded-[20px] lg:p-3">
+                  <span className="mb-1 text-center text-[10px] font-black tracking-[0.18em] text-[#6c79f0] uppercase select-none sm:text-[11px] lg:mb-1.5 lg:text-[12px]">
                     TEMPO (BPM)
                   </span>
                   <div className="flex items-center justify-between gap-1">
                     <button
-                      className="flex h-8 w-8 cursor-pointer items-center justify-center border-0 bg-transparent text-2xl font-light text-white/50 transition select-none hover:text-white"
+                      className="flex h-7 w-7 cursor-pointer items-center justify-center border-0 bg-transparent text-xl font-light text-white/50 transition select-none hover:text-white sm:h-8 sm:w-8 sm:text-2xl"
                       onClick={handleDecreaseBpm10}
                     >
                       −
@@ -741,10 +748,10 @@ export default function PlaySongPage() {
                       type="number"
                       value={Math.round(currentBpm)}
                       onChange={handleBpmInputChange}
-                      className="w-14 [appearance:textfield] border-0 bg-transparent text-center text-lg font-bold text-white outline-none focus:ring-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      className="w-12 [appearance:textfield] border-0 bg-transparent text-center text-base font-bold text-white outline-none focus:ring-0 sm:w-14 sm:text-lg [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                     />
                     <button
-                      className="flex h-8 w-8 cursor-pointer items-center justify-center border-0 bg-transparent text-2xl font-light text-white/50 transition select-none hover:text-white"
+                      className="flex h-7 w-7 cursor-pointer items-center justify-center border-0 bg-transparent text-xl font-light text-white/50 transition select-none hover:text-white sm:h-8 sm:w-8 sm:text-2xl"
                       onClick={handleIncreaseBpm10}
                     >
                       +
@@ -753,21 +760,21 @@ export default function PlaySongPage() {
                 </div>
 
                 {/* Merged Zoom Controls */}
-                <div className="flex w-[52px] flex-col justify-between overflow-hidden rounded-[20px] border border-white/5 bg-black/45 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15),0_8px_32px_0_rgba(0,0,0,0.37)] backdrop-blur-xl">
+                <div className="flex w-[44px] flex-col justify-between overflow-hidden rounded-2xl border border-white/5 bg-black/45 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15),0_8px_32px_0_rgba(0,0,0,0.37)] backdrop-blur-xl sm:w-[48px] lg:w-[52px] lg:rounded-[20px]">
                   <button
-                    className="flex flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white/70 transition hover:bg-white/5 hover:text-white"
+                    className="flex flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-1.5 text-white/70 transition hover:bg-white/5 hover:text-white sm:p-2"
                     onClick={() => setScaleIndex((i) => Math.min(ppsScales.length - 1, i + 1))}
                     title="Zoom In"
                   >
-                    <ZoomIn className="h-5 w-5" />
+                    <ZoomIn className="h-4 w-4 sm:h-5 sm:w-5" />
                   </button>
                   <div className="h-[1px] w-full bg-white/10" />
                   <button
-                    className="flex flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-2 text-white/70 transition hover:bg-white/5 hover:text-white"
+                    className="flex flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-1.5 text-white/70 transition hover:bg-white/5 hover:text-white sm:p-2"
                     onClick={() => setScaleIndex((i) => Math.max(0, i - 1))}
                     title="Zoom Out"
                   >
-                    <ZoomOut className="h-5 w-5" />
+                    <ZoomOut className="h-4 w-4 sm:h-5 sm:w-5" />
                   </button>
                 </div>
               </div>

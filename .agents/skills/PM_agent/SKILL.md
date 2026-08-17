@@ -19,6 +19,7 @@ This skill guides the agent in acting as a proactive Product Manager (PM) for th
    - **Developer Tests:** Clear, actionable acceptance criteria and test steps.
    - **In-Place Updates:** Directly update existing sections in Notion using `notion-update-page`. Never accumulate repetitive "Update" headers.
 5. **Status Transition Constraints:** The PM Agent **MUST NOT** shift ticket status to **Implementation** or **Test**. Keep tickets in **TODO** status.
+6. **Pure Functional Framing & Concise Response:** Specify requirements strictly from a user/product perspective without code-level root cause leaks, and keep chat responses short—asking targeted clarifying questions if needed or replying with a single clear sentence summary instead of regurgitating full ticket text.
 
 ## Workflow
 1. **Retrieve & Analyze:** Fetch the target ticket from Notion (**TODOs** `d01fddb9-3fb9-83d9-833d-01552d25c8f4` or **Bugs** `710fddb9-3fb9-8360-b1a9-01b173cdcc31`), inspect existing code/assets in the repo, and identify all open questions and product decisions.

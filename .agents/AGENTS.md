@@ -71,6 +71,7 @@ All agents MUST adapt their thinking depth, token expenditure, and execution eff
 2. **In-Place Edits (No Update Section Accumulation):** Do **NOT** append new "Update #1", "Update #2", or separate "Update" headers every time new info is added. Update existing sections directly in place.
 3. **Context Alignment:** Keep loomo task updates, bug resolutions, and roadmaps aligned between the codebase and the corresponding Notion databases listed above.
 4. **No External Workspaces:** Limit Notion read/write activities exclusively to the loomo project hierarchy mapped above.
+5. **Pure Functional Framing & Concise Response:** The PM Agent must specify requirements purely from a product/UX perspective without code-level root cause leaks, and keep chat responses short—asking clarifying questions if needed or replying with a single clear sentence summary rather than re-stating full ticket contents.
 
 ---
 

@@ -16,24 +16,12 @@ import {
   Users,
 } from 'lucide-react'
 import { motion } from 'motion/react'
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { Link } from 'react-router'
+import { useTheme } from '@/hooks'
 
 export default function AboutPage() {
-  const [isDarkMode, setIsDarkMode] = useState(true)
-
-  // Sync document root background with current theme
-  useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark')
-      document.body.classList.add('bg-[#101223]', 'text-[#F4F5F8]')
-      document.body.classList.remove('bg-[#F6F7FB]', 'text-[#24273A]')
-    } else {
-      document.documentElement.classList.remove('dark')
-      document.body.classList.remove('bg-[#101223]', 'text-[#F4F5F8]')
-      document.body.classList.add('bg-[#F6F7FB]', 'text-[#24273A]')
-    }
-  }, [isDarkMode])
+  const [isDarkMode, setIsDarkMode] = useTheme()
 
   return (
     <div
@@ -345,7 +333,7 @@ function Navbar({
 
         {/* Center: Floating Pill Navigation (About Tab is Active) */}
         <div
-          className={`hidden items-center gap-1 rounded-full p-2 backdrop-blur-2xl transition-all duration-300 lg:flex ${
+          className={`hidden items-center gap-1 rounded-full p-1.5 backdrop-blur-2xl transition-all duration-300 md:flex sm:p-2 ${
             isDarkMode
               ? 'border border-white/[0.08] bg-[#1A1D2D]/90 shadow-[0_4px_25px_rgba(0,0,0,0.3)]'
               : 'border border-[#24273A]/[0.07] bg-white/75 shadow-[0_8px_30px_rgba(36,39,58,0.06),inset_0_1px_1px_rgba(255,255,255,0.9)]'
@@ -353,52 +341,52 @@ function Navbar({
         >
           <Link
             to="/"
-            className={`flex items-center gap-2.5 rounded-full px-5 py-2.5 text-base font-bold transition-all ${
+            className={`flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-bold transition-all sm:gap-2.5 sm:px-5 sm:py-2.5 sm:text-base ${
               isDarkMode
                 ? 'text-[#A2A3B1] hover:bg-[#202333] hover:text-[#F4F5F8]'
                 : 'text-[#696E87] hover:bg-white/70 hover:text-[#24273A]'
             }`}
           >
-            <HomeIcon className="h-5 w-5" />
+            <HomeIcon className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
             <span>Home</span>
           </Link>
 
           <Link
             to="/freeplay"
-            className={`flex items-center gap-2.5 rounded-full px-5 py-2.5 text-base font-bold transition-all ${
+            className={`flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-bold transition-all sm:gap-2.5 sm:px-5 sm:py-2.5 sm:text-base ${
               isDarkMode
                 ? 'text-[#A2A3B1] hover:bg-[#202333] hover:text-[#F4F5F8]'
                 : 'text-[#696E87] hover:bg-white/70 hover:text-[#24273A]'
             }`}
           >
-            <Piano className="h-5 w-5" />
+            <Piano className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
             <span>Practice</span>
           </Link>
 
-          <div className={`mx-1 h-5 w-px ${isDarkMode ? 'bg-white/10' : 'bg-[#24273A]/10'}`} />
+          <div className={`mx-0.5 h-4 w-px sm:mx-1 sm:h-5 ${isDarkMode ? 'bg-white/10' : 'bg-[#24273A]/10'}`} />
 
           <Link
             to="/songs"
-            className={`flex items-center gap-2.5 rounded-full px-5 py-2.5 text-base font-bold transition-all ${
+            className={`flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-bold transition-all sm:gap-2.5 sm:px-5 sm:py-2.5 sm:text-base ${
               isDarkMode
                 ? 'text-[#A2A3B1] hover:bg-[#202333] hover:text-[#F4F5F8]'
                 : 'text-[#696E87] hover:bg-white/70 hover:text-[#24273A]'
             }`}
           >
-            <Library className="h-5 w-5" />
+            <Library className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
             <span>Library</span>
           </Link>
 
           {/* About Active Pill */}
           <Link
             to="/about"
-            className={`flex items-center gap-2.5 rounded-full px-5 py-2.5 text-base font-bold shadow-sm transition-all ${
+            className={`flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-bold shadow-sm transition-all sm:gap-2.5 sm:px-5 sm:py-2.5 sm:text-base ${
               isDarkMode
                 ? 'border border-white/10 bg-[#202333] text-[#F4F5F8]'
                 : 'border border-[#24273A]/[0.08] bg-white text-[#24273A] shadow-[0_2px_10px_rgba(36,39,58,0.08)]'
             }`}
           >
-            <Users className="h-5 w-5 text-[#6E61EA]" />
+            <Users className="h-4.5 w-4.5 text-[#6E61EA] sm:h-5 sm:w-5" />
             <span>About</span>
           </Link>
         </div>
@@ -448,7 +436,7 @@ function Navbar({
 function MobileNav({ isDarkMode }: { isDarkMode: boolean }) {
   return (
     <nav
-      className={`fixed bottom-0 left-0 z-50 flex w-full items-center justify-around rounded-t-3xl border-t px-4 pt-2 pb-6 backdrop-blur-2xl transition-colors lg:hidden ${
+      className={`fixed bottom-0 left-0 z-50 flex w-full items-center justify-around rounded-t-3xl border-t px-4 pt-2 pb-6 backdrop-blur-2xl transition-colors md:hidden ${
         isDarkMode
           ? 'border-white/[0.08] bg-[#101223]/95 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]'
           : 'border-[#24273A]/[0.08] bg-[#F6F7FB]/95 shadow-[0_-10px_40px_rgba(36,39,58,0.06)]'

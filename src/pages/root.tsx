@@ -2,7 +2,7 @@ import { GA_TRACKING_ID } from '@/features/analytics'
 import styles from '@/styles/global.css?inline'
 import { useEffect } from 'react'
 import { Outlet, Scripts, ScrollRestoration } from 'react-router'
-import { useTouchpadNavigation } from '@/hooks'
+import { useTheme, useTouchpadNavigation } from '@/hooks'
 import { Providers } from './providers'
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -74,6 +74,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   useTouchpadNavigation()
+  useTheme()
 
   useEffect(() => {
     let timeouts = new Map<HTMLElement, any>()

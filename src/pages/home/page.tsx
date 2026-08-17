@@ -24,32 +24,19 @@ import {
 import { AnimatePresence, motion } from 'motion/react'
 import React, { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
+import { useTheme } from '@/hooks'
 import { FeaturedSongsPreview } from './FeaturedSongsPreview'
 
 export default function Home() {
   const [isDemoOpen, setIsDemoOpen] = useState(false)
-  const [isDarkMode, setIsDarkMode] = useState(true)
-
-  // Sync document root background with current theme
-  useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark')
-      document.body.classList.add('bg-[#101223]', 'text-[#F4F5F8]')
-      document.body.classList.remove('bg-[#F6F7FB]', 'text-[#24273A]')
-    } else {
-      document.documentElement.classList.remove('dark')
-      document.body.classList.remove('bg-[#101223]', 'text-[#F4F5F8]')
-      document.body.classList.add('bg-[#F6F7FB]', 'text-[#24273A]')
-    }
-  }, [isDarkMode])
+  const [isDarkMode, setIsDarkMode] = useTheme()
 
   return (
     <div
-      className={`min-h-screen font-['Inter',sans-serif] overflow-x-hidden transition-colors duration-500 ${
-        isDarkMode
+      className={`min-h-screen font-['Inter',sans-serif] overflow-x-hidden transition-colors duration-500 ${isDarkMode
           ? 'bg-[#101223] text-[#F4F5F8] selection:bg-[#7569EC]/40'
           : 'bg-[#F6F7FB] text-[#24273A] selection:bg-[#6E61EA]/25'
-      }`}
+        }`}
     >
       {/* 1. Header Navigation */}
       <Navbar isDarkMode={isDarkMode} onToggleTheme={(dark) => setIsDarkMode(dark)} />
@@ -59,27 +46,24 @@ export default function Home() {
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           {/* Top subtle radial light source reaching down through the hero and showcase */}
           <div
-            className={`absolute top-0 left-1/2 w-full -translate-x-1/2 transition-all duration-700 ${
-              isDarkMode
+            className={`absolute top-0 left-1/2 w-full -translate-x-1/2 transition-all duration-700 ${isDarkMode
                 ? 'h-[750px] bg-[radial-gradient(ellipse_at_top,rgba(117,105,236,0.22)_0%,transparent_70%)]'
                 : 'h-[1150px] md:h-[1350px] bg-[radial-gradient(ellipse_at_top,rgba(110,97,234,0.42)_0%,rgba(139,128,249,0.22)_38%,rgba(175,166,255,0.1)_62%,transparent_85%)]'
-            }`}
+              }`}
           />
           {/* Main expanded indigo glow */}
           <div
-            className={`absolute left-1/2 -translate-x-1/2 rounded-full transition-all duration-700 ${
-              isDarkMode
+            className={`absolute left-1/2 -translate-x-1/2 rounded-full transition-all duration-700 ${isDarkMode
                 ? 'top-[-90px] h-[900px] w-[1400px] bg-[#7569EC]/15 blur-[140px]'
                 : 'top-[-80px] h-[1200px] w-[1500px] bg-[#6E61EA]/28 blur-[160px]'
-            }`}
+              }`}
           />
           {/* Inner soft secondary vibrant glow */}
           <div
-            className={`absolute left-1/2 -translate-x-1/2 rounded-full transition-all duration-700 ${
-              isDarkMode
+            className={`absolute left-1/2 -translate-x-1/2 rounded-full transition-all duration-700 ${isDarkMode
                 ? 'top-[30px] h-[550px] w-[900px] bg-[#9ba4ff]/10 blur-[110px]'
                 : 'top-[100px] h-[800px] w-[1100px] bg-[#8F84FB]/22 blur-[125px]'
-            }`}
+              }`}
           />
           {/* Light mode smooth base transition to pure white */}
           {!isDarkMode && (
@@ -123,11 +107,10 @@ function Navbar({
 }) {
   return (
     <nav
-      className={`fixed top-0 z-50 w-full backdrop-blur-2xl transition-colors duration-500 ${
-        isDarkMode
+      className={`fixed top-0 z-50 w-full backdrop-blur-2xl transition-colors duration-500 ${isDarkMode
           ? 'border-b border-white/[0.06] bg-[#101223]/85 shadow-[0_8px_32px_0_rgba(0,0,0,0.4)]'
           : 'border-b border-black/[0.05] bg-[#F6F7FB]/85 shadow-[0_8px_30px_0_rgba(36,39,58,0.03)]'
-      }`}
+        }`}
     >
       <div className="mx-auto flex h-22 w-full max-w-7xl items-center justify-between px-4 sm:px-6">
         {/* Left: loomo Logo + Wordmark (20% bigger, tighter fit) */}
@@ -139,11 +122,10 @@ function Navbar({
               className="h-11 w-22 drop-shadow-[0_0_22px_rgba(110,97,234,0.5)] transition-transform duration-300 group-hover:scale-105"
             />
             <span
-              className={`font-['Space_Grotesk',sans-serif] text-4xl leading-none font-black tracking-[-0.03em] transition-all sm:text-5xl ${
-                isDarkMode
+              className={`font-['Space_Grotesk',sans-serif] text-4xl leading-none font-black tracking-[-0.03em] transition-all sm:text-5xl ${isDarkMode
                   ? 'text-[#F4F5F8]'
                   : 'bg-gradient-to-b from-[#181028] via-[#331559] to-[#633BB9] bg-clip-text text-transparent'
-              }`}
+                }`}
             >
               loomo
             </span>
@@ -152,61 +134,56 @@ function Navbar({
 
         {/* Center: Floating Pill Navigation (+20% larger text and icons) */}
         <div
-          className={`hidden items-center gap-1 rounded-full p-2 backdrop-blur-2xl transition-all duration-300 lg:flex ${
-            isDarkMode
+          className={`hidden items-center gap-1 rounded-full p-1.5 backdrop-blur-2xl transition-all duration-300 md:flex sm:p-2 ${isDarkMode
               ? 'border border-white/[0.08] bg-[#1A1D2D]/90 shadow-[0_4px_25px_rgba(0,0,0,0.3)]'
               : 'border border-[#24273A]/[0.07] bg-white/75 shadow-[0_8px_30px_rgba(36,39,58,0.06),inset_0_1px_1px_rgba(255,255,255,0.9)]'
-          }`}
+            }`}
         >
           {/* Home Active Pill */}
           <Link
             to="/"
-            className={`flex items-center gap-2.5 rounded-full px-5 py-2.5 text-base font-bold shadow-sm transition-all ${
-              isDarkMode
+            className={`flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-bold shadow-sm transition-all sm:gap-2.5 sm:px-5 sm:py-2.5 sm:text-base ${isDarkMode
                 ? 'border border-white/10 bg-[#202333] text-[#F4F5F8]'
                 : 'border border-[#24273A]/[0.08] bg-white text-[#24273A] shadow-[0_2px_10px_rgba(36,39,58,0.08)]'
-            }`}
+              }`}
           >
-            <HomeIcon className="h-5 w-5 text-[#6E61EA]" />
+            <HomeIcon className="h-4.5 w-4.5 text-[#6E61EA] sm:h-5 sm:w-5" />
             <span>Home</span>
           </Link>
 
           <Link
             to="/freeplay"
-            className={`flex items-center gap-2.5 rounded-full px-5 py-2.5 text-base font-bold transition-all ${
-              isDarkMode
+            className={`flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-bold transition-all sm:gap-2.5 sm:px-5 sm:py-2.5 sm:text-base ${isDarkMode
                 ? 'text-[#A2A3B1] hover:bg-[#202333] hover:text-[#F4F5F8]'
                 : 'text-[#696E87] hover:bg-white/70 hover:text-[#24273A]'
-            }`}
+              }`}
           >
-            <Piano className="h-5 w-5" />
+            <Piano className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
             <span>Practice</span>
           </Link>
 
           {/* Subtle separator */}
-          <div className={`mx-1 h-5 w-px ${isDarkMode ? 'bg-white/10' : 'bg-[#24273A]/10'}`} />
+          <div className={`mx-0.5 h-4 w-px sm:mx-1 sm:h-5 ${isDarkMode ? 'bg-white/10' : 'bg-[#24273A]/10'}`} />
 
           <Link
             to="/songs"
-            className={`flex items-center gap-2.5 rounded-full px-5 py-2.5 text-base font-bold transition-all ${
-              isDarkMode
+            className={`flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-bold transition-all sm:gap-2.5 sm:px-5 sm:py-2.5 sm:text-base ${isDarkMode
                 ? 'text-[#A2A3B1] hover:bg-[#202333] hover:text-[#F4F5F8]'
                 : 'text-[#696E87] hover:bg-white/70 hover:text-[#24273A]'
-            }`}
+              }`}
           >
-            <Library className="h-5 w-5" />
+            <Library className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
             <span>Library</span>
           </Link>
 
           <Link
             to="/about"
-            className={`flex items-center gap-2.5 rounded-full px-5 py-2.5 text-base font-bold transition-all ${
-              isDarkMode
+            className={`flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-bold transition-all sm:gap-2.5 sm:px-5 sm:py-2.5 sm:text-base ${isDarkMode
                 ? 'text-[#A2A3B1] hover:bg-[#202333] hover:text-[#F4F5F8]'
                 : 'text-[#696E87] hover:bg-white/70 hover:text-[#24273A]'
-            }`}
+              }`}
           >
-            <Users className="h-5 w-5" />
+            <Users className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
             <span>About</span>
           </Link>
         </div>
@@ -214,30 +191,27 @@ function Navbar({
         {/* Right: Dual-State Segmented Theme Toggle Pill */}
         <div className="flex items-center">
           <div
-            className={`flex items-center rounded-full p-1.5 shadow-sm backdrop-blur-2xl transition-all ${
-              isDarkMode
+            className={`flex items-center rounded-full p-1.5 shadow-sm backdrop-blur-2xl transition-all ${isDarkMode
                 ? 'border border-white/[0.08] bg-[#1A1D2D]/90'
                 : 'border border-[#24273A]/[0.08] bg-white/80 shadow-[0_2px_8px_rgba(36,39,58,0.04)]'
-            }`}
+              }`}
           >
             <button
               onClick={() => onToggleTheme(true)}
-              className={`flex h-10 w-10 cursor-pointer items-center justify-center rounded-full transition-all ${
-                isDarkMode
+              className={`flex h-10 w-10 cursor-pointer items-center justify-center rounded-full transition-all ${isDarkMode
                   ? 'bg-[#202333] text-[#7569EC] shadow-sm'
                   : 'text-[#696E87] hover:text-[#24273A]'
-              }`}
+                }`}
               title="Dark Mode"
             >
               <Moon className="h-5 w-5" />
             </button>
             <button
               onClick={() => onToggleTheme(false)}
-              className={`flex h-10 w-10 cursor-pointer items-center justify-center rounded-full transition-all ${
-                !isDarkMode
+              className={`flex h-10 w-10 cursor-pointer items-center justify-center rounded-full transition-all ${!isDarkMode
                   ? 'bg-[#E5E7F9] text-amber-500 shadow-sm'
                   : 'text-[#A2A3B1] hover:text-[#F4F5F8]'
-              }`}
+                }`}
               title="Light Mode"
             >
               <Sun className="h-5 w-5" />
@@ -276,9 +250,8 @@ function Hero({ isDarkMode }: { isDarkMode: boolean }) {
         className="space-y-4"
       >
         <div
-          className={`mb-2 flex w-full items-center justify-center gap-[0.35em] font-['Space_Grotesk',sans-serif] text-base font-bold tracking-[0.28em] uppercase select-none transition-colors sm:text-lg md:text-xl ${
-            isDarkMode ? 'text-[#A2A3B1]' : 'text-[#484C66]'
-          }`}
+          className={`mb-2 flex w-full items-center justify-center gap-[0.35em] font-['Space_Grotesk',sans-serif] text-base font-bold tracking-[0.28em] uppercase select-none transition-colors sm:text-lg md:text-xl ${isDarkMode ? 'text-[#A2A3B1]' : 'text-[#484C66]'
+            }`}
         >
           <motion.span layout>just</motion.span>
           <motion.span
@@ -314,23 +287,20 @@ function Hero({ isDarkMode }: { isDarkMode: boolean }) {
 
         {/* Main loomo Title */}
         <h1
-          className={`font-['Space_Grotesk',sans-serif] bg-clip-text text-7xl leading-none font-black tracking-[-0.035em] text-transparent transition-all sm:text-8xl md:text-9xl ${
-            isDarkMode
+          className={`font-['Space_Grotesk',sans-serif] bg-clip-text text-7xl leading-none font-black tracking-[-0.035em] text-transparent transition-all sm:text-8xl md:text-9xl ${isDarkMode
               ? 'bg-gradient-to-b from-[#FFFFFF] via-[#F4F5F8] to-[#888A95]'
               : 'bg-gradient-to-b from-[#181028] via-[#331559] to-[#633BB9]'
-          }`}
+            }`}
         >
           loomo
         </h1>
 
         {/* Subtitle (20% bigger & 20% higher contrast studio gray) */}
         <p
-          className={`mx-auto max-w-2xl font-['Inter',sans-serif] text-lg leading-relaxed font-normal transition-colors sm:text-xl md:text-[22px] ${
-            isDarkMode ? 'text-[#B6B8C6]' : 'text-[#444860]'
-          }`}
+          className={`mx-auto max-w-2xl font-['Inter',sans-serif] text-lg leading-relaxed font-normal transition-colors sm:text-xl md:text-[22px] ${isDarkMode ? 'text-[#B6B8C6]' : 'text-[#444860]'
+            }`}
         >
-          Learn to play music in just weeks. Plug into loomo, follow the simple falling notes and get
-          real-time AI feedback, no experience required!
+          Play or remix your favorite songs in just weeks. With loomo AI by your side, you can easily teach yourself without any prior experience
         </p>
       </motion.div>
 
@@ -353,11 +323,10 @@ function Hero({ isDarkMode }: { isDarkMode: boolean }) {
         {/* 2. Try Now Button (Navigates to Library with Music Note Icon) */}
         <Link
           to="/songs"
-          className={`flex items-center justify-center gap-2.5 rounded-full px-7 py-3 text-sm font-bold shadow-sm transition-all active:scale-95 sm:text-base ${
-            isDarkMode
+          className={`flex items-center justify-center gap-2.5 rounded-full px-7 py-3 text-sm font-bold shadow-sm transition-all active:scale-95 sm:text-base ${isDarkMode
               ? 'border border-white/[0.08] bg-[#1A1D2D]/90 text-[#F4F5F8] hover:border-white/20 hover:bg-[#202333]'
               : 'border border-[#24273A]/[0.08] bg-white/80 text-[#24273A] backdrop-blur-md hover:border-[#24273A]/[0.18] hover:bg-white shadow-[0_4px_16px_rgba(36,39,58,0.05)]'
-          }`}
+            }`}
         >
           <Music className="h-4.5 w-4.5 text-[#6E61EA]" />
           <span>Try Now</span>
@@ -381,11 +350,10 @@ function HeroShowcase({
   return (
     <section className="relative z-10 mx-auto mt-22 w-full max-w-5xl md:mt-26">
       <div
-        className={`group relative aspect-[16/9] w-full overflow-hidden rounded-[32px] border transition-all md:aspect-[21/9] ${
-          isDarkMode
+        className={`group relative aspect-[16/9] w-full overflow-hidden rounded-[32px] border transition-all md:aspect-[21/9] ${isDarkMode
             ? 'border-white/[0.08] bg-[#1A1D2D] shadow-[0_25px_70px_rgba(0,0,0,0.6)]'
             : 'border-[#24273A]/[0.08] bg-white/85 backdrop-blur-2xl shadow-[0_30px_80px_-15px_rgba(36,39,58,0.08),0_1px_3px_rgba(36,39,58,0.04)]'
-        }`}
+          }`}
       >
         {/* Background Image / Waterfall Canvas Preview */}
         <img
@@ -393,24 +361,22 @@ function HeroShowcase({
           alt="loomo piano waterfall demo"
           className="h-full w-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
           onError={(e) => {
-            ;(e.target as HTMLImageElement).src = '/images/mode_falling_notes_screenshot.png'
+            ; (e.target as HTMLImageElement).src = '/images/mode_falling_notes_screenshot.png'
           }}
         />
 
         {/* Ambient Dark/Light Gradient Overlays */}
         <div
-          className={`absolute inset-0 transition-colors ${
-            isDarkMode
+          className={`absolute inset-0 transition-colors ${isDarkMode
               ? 'bg-gradient-to-t from-[#101223] via-[#101223]/35 to-[#101223]/20'
               : 'bg-gradient-to-t from-[#F6F7FB] via-[#F6F7FB]/40 to-transparent'
-          }`}
+            }`}
         />
         <div
-          className={`absolute inset-0 ${
-            isDarkMode
+          className={`absolute inset-0 ${isDarkMode
               ? 'bg-radial from-transparent via-[#101223]/25 to-[#101223]/80'
               : 'bg-radial from-transparent via-[#F6F7FB]/20 to-[#F6F7FB]/50'
-          }`}
+            }`}
         />
 
         {/* Centered Circular Play Button */}
@@ -507,11 +473,10 @@ function FeatureCarousel({ isDarkMode }: { isDarkMode: boolean }) {
     >
       {/* Carousel Container */}
       <div
-        className={`relative min-h-[420px] w-full overflow-hidden rounded-[32px] p-6 transition-all duration-300 md:min-h-[460px] md:p-10 ${
-          isDarkMode
+        className={`relative min-h-[420px] w-full overflow-hidden rounded-[32px] p-6 transition-all duration-300 md:min-h-[460px] md:p-10 ${isDarkMode
             ? 'border border-white/[0.1] bg-[#222538] shadow-[0_20px_60px_rgba(0,0,0,0.5)]'
             : 'border border-[#24273A]/[0.07] bg-white/90 backdrop-blur-2xl shadow-[0_25px_65px_-10px_rgba(36,39,58,0.07),0_1px_2px_rgba(36,39,58,0.04)]'
-        }`}
+          }`}
       >
         <AnimatePresence initial={false} custom={direction} mode="wait">
           <motion.div
@@ -527,9 +492,8 @@ function FeatureCarousel({ isDarkMode }: { isDarkMode: boolean }) {
             <div className="flex flex-col justify-center space-y-5 pb-12 md:pb-8">
               <div className="flex items-center gap-2">
                 <div
-                  className={`flex h-8 w-8 items-center justify-center rounded-lg ${
-                    isDarkMode ? 'bg-[#7569EC]/15 text-[#7569EC]' : 'bg-[#6E61EA]/10 text-[#6E61EA]'
-                  }`}
+                  className={`flex h-8 w-8 items-center justify-center rounded-lg ${isDarkMode ? 'bg-[#7569EC]/15 text-[#7569EC]' : 'bg-[#6E61EA]/10 text-[#6E61EA]'
+                    }`}
                 >
                   <SlideIcon className="h-4.5 w-4.5" />
                 </div>
@@ -539,17 +503,15 @@ function FeatureCarousel({ isDarkMode }: { isDarkMode: boolean }) {
               </div>
 
               <h3
-                className={`font-['Space_Grotesk',sans-serif] text-3xl font-black tracking-tight transition-colors sm:text-4xl md:text-5xl ${
-                  isDarkMode ? 'text-[#F4F5F8]' : 'text-[#24273A]'
-                }`}
+                className={`font-['Space_Grotesk',sans-serif] text-3xl font-black tracking-tight transition-colors sm:text-4xl md:text-5xl ${isDarkMode ? 'text-[#F4F5F8]' : 'text-[#24273A]'
+                  }`}
               >
                 {slide.title}
               </h3>
 
               <p
-                className={`text-base leading-relaxed transition-colors md:text-lg ${
-                  isDarkMode ? 'text-[#A2A3B1]' : 'text-[#5E637D]'
-                }`}
+                className={`text-base leading-relaxed transition-colors md:text-lg ${isDarkMode ? 'text-[#A2A3B1]' : 'text-[#5E637D]'
+                  }`}
               >
                 {slide.description}
               </p>
@@ -575,24 +537,22 @@ function FeatureCarousel({ isDarkMode }: { isDarkMode: boolean }) {
 
             {/* Slide Right: Visual Card Preview */}
             <div
-              className={`relative aspect-[4/3] w-full overflow-hidden rounded-2xl shadow-inner transition-colors ${
-                isDarkMode
+              className={`relative aspect-[4/3] w-full overflow-hidden rounded-2xl shadow-inner transition-colors ${isDarkMode
                   ? 'border border-white/[0.08] bg-[#161828]'
                   : 'border border-[#24273A]/[0.06] bg-[#EEF1FA]'
-              }`}
+                }`}
             >
               <img
                 src={slide.image}
                 alt={slide.title}
                 className="h-full w-full object-cover object-center"
                 onError={(e) => {
-                  ;(e.target as HTMLImageElement).src = '/images/mode_falling_notes_screenshot.png'
+                  ; (e.target as HTMLImageElement).src = '/images/mode_falling_notes_screenshot.png'
                 }}
               />
               <div
-                className={`absolute inset-0 bg-gradient-to-tr via-transparent to-transparent ${
-                  isDarkMode ? 'from-[#101223]/80' : 'from-[#F6F7FB]/60'
-                }`}
+                className={`absolute inset-0 bg-gradient-to-tr via-transparent to-transparent ${isDarkMode ? 'from-[#101223]/80' : 'from-[#F6F7FB]/60'
+                  }`}
               />
             </div>
           </motion.div>
@@ -609,13 +569,12 @@ function FeatureCarousel({ isDarkMode }: { isDarkMode: boolean }) {
                   setDirection(idx > current ? 1 : -1)
                   setCurrent(idx)
                 }}
-                className={`h-2.5 cursor-pointer rounded-full transition-all duration-300 ${
-                  idx === current
+                className={`h-2.5 cursor-pointer rounded-full transition-all duration-300 ${idx === current
                     ? 'w-16 bg-[#6E61EA] sm:w-20'
                     : isDarkMode
-                    ? 'w-5 bg-[#343852] hover:bg-white/30 sm:w-6'
-                    : 'w-5 bg-[#D8DCEB] hover:bg-[#696E87]/40 sm:w-6'
-                }`}
+                      ? 'w-5 bg-[#343852] hover:bg-white/30 sm:w-6'
+                      : 'w-5 bg-[#D8DCEB] hover:bg-[#696E87]/40 sm:w-6'
+                  }`}
                 title={`Go to slide ${idx + 1}`}
               />
             ))}
@@ -625,22 +584,20 @@ function FeatureCarousel({ isDarkMode }: { isDarkMode: boolean }) {
           <div className="flex items-center gap-1.5 pl-1">
             <button
               onClick={slidePrev}
-              className={`flex h-9 w-9 cursor-pointer items-center justify-center rounded-full shadow-md backdrop-blur-md transition-all hover:bg-[#6E61EA] hover:text-white active:scale-90 ${
-                isDarkMode
+              className={`flex h-9 w-9 cursor-pointer items-center justify-center rounded-full shadow-md backdrop-blur-md transition-all hover:bg-[#6E61EA] hover:text-white active:scale-90 ${isDarkMode
                   ? 'border border-white/[0.08] bg-[#2d324b] text-[#F4F5F8] hover:border-[#6E61EA]/50'
                   : 'border border-[#24273A]/[0.08] bg-[#EEF1FA] text-[#24273A] hover:border-[#6E61EA]/50'
-              }`}
+                }`}
               title="Previous Slide"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
             <button
               onClick={slideNext}
-              className={`flex h-9 w-9 cursor-pointer items-center justify-center rounded-full shadow-md backdrop-blur-md transition-all hover:bg-[#6E61EA] hover:text-white active:scale-90 ${
-                isDarkMode
+              className={`flex h-9 w-9 cursor-pointer items-center justify-center rounded-full shadow-md backdrop-blur-md transition-all hover:bg-[#6E61EA] hover:text-white active:scale-90 ${isDarkMode
                   ? 'border border-white/[0.08] bg-[#2d324b] text-[#F4F5F8] hover:border-[#6E61EA]/50'
                   : 'border border-[#24273A]/[0.08] bg-[#EEF1FA] text-[#24273A] hover:border-[#6E61EA]/50'
-              }`}
+                }`}
               title="Next Slide"
             >
               <ChevronRight className="h-4 w-4" />
@@ -670,32 +627,28 @@ function DemoVideoModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-lg animate-in fade-in duration-200">
       <div
-        className={`relative flex w-full max-w-4xl flex-col items-center rounded-[32px] p-4 shadow-[0_30px_90px_rgba(0,0,0,0.8)] transition-colors sm:p-6 ${
-          isDarkMode
+        className={`relative flex w-full max-w-4xl flex-col items-center rounded-[32px] p-4 shadow-[0_30px_90px_rgba(0,0,0,0.8)] transition-colors sm:p-6 ${isDarkMode
             ? 'border border-white/[0.12] bg-[#101223] text-[#F4F5F8]'
             : 'border border-[#24273A]/[0.08] bg-white/95 text-[#24273A]'
-        }`}
+          }`}
       >
         <button
           onClick={onClose}
-          className={`absolute top-4 right-4 z-10 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full transition hover:bg-[#6E61EA] hover:text-white ${
-            isDarkMode ? 'bg-[#202333] text-[#A2A3B1]' : 'bg-[#EEF1FA] text-[#696E87]'
-          }`}
+          className={`absolute top-4 right-4 z-10 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full transition hover:bg-[#6E61EA] hover:text-white ${isDarkMode ? 'bg-[#202333] text-[#A2A3B1]' : 'bg-[#EEF1FA] text-[#696E87]'
+            }`}
         >
           <X size={18} />
         </button>
 
         <div
-          className={`mb-4 flex w-full items-center justify-between border-b pb-3 ${
-            isDarkMode ? 'border-white/[0.08]' : 'border-[#24273A]/[0.08]'
-          }`}
+          className={`mb-4 flex w-full items-center justify-between border-b pb-3 ${isDarkMode ? 'border-white/[0.08]' : 'border-[#24273A]/[0.08]'
+            }`}
         >
           <div className="flex items-center gap-2">
             <Play className="h-5 w-5 text-[#6E61EA]" />
             <h3
-              className={`font-['Space_Grotesk',sans-serif] text-lg font-bold ${
-                isDarkMode ? 'text-[#F4F5F8]' : 'text-[#24273A]'
-              }`}
+              className={`font-['Space_Grotesk',sans-serif] text-lg font-bold ${isDarkMode ? 'text-[#F4F5F8]' : 'text-[#24273A]'
+                }`}
             >
               loomo piano showcase & interactive preview
             </h3>
@@ -704,19 +657,17 @@ function DemoVideoModal({
 
         {/* Embedded Interactive Song Visualizer Demo */}
         <div
-          className={`relative aspect-[16/9] w-full overflow-hidden rounded-2xl border ${
-            isDarkMode
+          className={`relative aspect-[16/9] w-full overflow-hidden rounded-2xl border ${isDarkMode
               ? 'border-white/[0.08] bg-[#1A1D2D]'
               : 'border-[#24273A]/[0.08] bg-[#F6F7FB]'
-          }`}
+            }`}
         >
           <FeaturedSongsPreview marginTop={0} />
         </div>
 
         <div
-          className={`mt-4 flex w-full items-center justify-between text-xs ${
-            isDarkMode ? 'text-[#A2A3B1]' : 'text-[#696E87]'
-          }`}
+          className={`mt-4 flex w-full items-center justify-between text-xs ${isDarkMode ? 'text-[#A2A3B1]' : 'text-[#696E87]'
+            }`}
         >
           <span>Use Spacebar to Play / Pause demo playback</span>
           <Link
@@ -739,11 +690,10 @@ function DemoVideoModal({
 function MobileNav({ isDarkMode }: { isDarkMode: boolean }) {
   return (
     <nav
-      className={`fixed bottom-0 left-0 z-50 flex w-full items-center justify-around rounded-t-3xl border-t px-4 pt-2 pb-6 backdrop-blur-2xl transition-colors lg:hidden ${
-        isDarkMode
+      className={`fixed bottom-0 left-0 z-50 flex w-full items-center justify-around rounded-t-3xl border-t px-4 pt-2 pb-6 backdrop-blur-2xl transition-colors md:hidden ${isDarkMode
           ? 'border-white/[0.08] bg-[#101223]/95 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]'
           : 'border-[#24273A]/[0.08] bg-[#F6F7FB]/95 shadow-[0_-10px_40px_rgba(36,39,58,0.06)]'
-      }`}
+        }`}
     >
       <MobileNavItem
         icon={<HomeIcon className="h-5 w-5" />}
@@ -790,13 +740,12 @@ function MobileNavItem({
   return (
     <Link
       to={href}
-      className={`flex flex-col items-center justify-center px-3 py-1.5 transition-all active:scale-90 ${
-        active
+      className={`flex flex-col items-center justify-center px-3 py-1.5 transition-all active:scale-90 ${active
           ? 'rounded-2xl bg-[#6E61EA]/20 text-[#6E61EA] shadow-[0_0_15px_rgba(110,97,234,0.3)]'
           : isDarkMode
-          ? 'text-[#A2A3B1] hover:text-[#6E61EA]'
-          : 'text-[#696E87] hover:text-[#6E61EA]'
-      }`}
+            ? 'text-[#A2A3B1] hover:text-[#6E61EA]'
+            : 'text-[#696E87] hover:text-[#6E61EA]'
+        }`}
     >
       {icon}
       <span className="mt-1 text-[10px] font-semibold tracking-wider uppercase">{label}</span>
