@@ -1,6 +1,6 @@
 import type { LucideProps } from '@/icons'
 
-export function Midi({
+export function Sparkles({
   width,
   height,
   size = 24,
@@ -28,10 +28,10 @@ export function Midi({
       strokeLinejoin="round"
       {...props}
     >
-      <rect x="2" y="5" width="20" height="14" rx="3" />
-      <path d="M6 5v8M10 5v8M14 5v8M18 5v8" />
-      <path d="M2 13h20" />
-      <circle cx="12" cy="16.5" r="1" fill="#6c79f0" />
+      <path d="M2 12c2.5-6 5.5-6 8 0s5.5 6 8 0" strokeWidth="2.2" />
+      <path d="M19 4l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" fill={color} />
     </svg>
   )
 }
+
+export default Sparkles

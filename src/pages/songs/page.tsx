@@ -26,7 +26,7 @@ import {
   Upload,
   Users,
   X,
-} from 'lucide-react'
+} from '@/icons'
 import { AnimatePresence, motion } from 'motion/react'
 import React, { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
@@ -85,7 +85,7 @@ function getSongDetails(song: SongMetadata, customTitle?: string) {
   }
   return {
     title: effectiveTitle,
-    artist: song.source === 'upload' ? 'User Upload' : 'loomo library',
+    artist: song.source === 'upload' ? 'User Upload' : 'loomou library',
     genre: getSongGenre(song),
   }
 }
@@ -308,7 +308,7 @@ export default function LibraryPage() {
           >
             <div className="inline-flex items-center gap-2 rounded-full border border-[#6E61EA]/30 bg-[#6E61EA]/10 px-4 py-1.5 text-xs font-bold tracking-wider text-[#6E61EA]">
               <LibraryIcon className="h-3.5 w-3.5" />
-              <span>loomo library</span>
+              <span>loomou library</span>
             </div>
 
             <h1
@@ -326,7 +326,7 @@ export default function LibraryPage() {
                 isDarkMode ? 'text-[#A2A3B1]' : 'text-[#5E637D]'
               }`}
             >
-              Select a sample song from loomo’s library or import your own MIDI files to start practicing.
+              Select a sample song from loomou’s library or import your own MIDI files to start practicing.
             </p>
           </motion.div>
         </div>
@@ -746,7 +746,7 @@ function Navbar({
       }`}
     >
       <div className="mx-auto flex h-22 w-full max-w-7xl items-center justify-between px-4 sm:px-6">
-        {/* Left: loomo Logo + Wordmark */}
+        {/* Left: loomou Logo + Wordmark */}
         <div className="flex items-center">
           <Link to="/" className="group flex items-center gap-3.5 transition-opacity hover:opacity-90">
             <Logo
@@ -761,7 +761,7 @@ function Navbar({
                   : 'bg-gradient-to-b from-[#181028] via-[#331559] to-[#633BB9] bg-clip-text text-transparent'
               }`}
             >
-              loomo
+              loomou
             </span>
           </Link>
         </div>

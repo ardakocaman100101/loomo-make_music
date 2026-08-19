@@ -32,7 +32,7 @@ import {
   Target,
   ZoomIn,
   ZoomOut,
-} from 'lucide-react'
+} from '@/icons'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { CompletionModal, TopBar, TrackHUD } from './components'
@@ -95,7 +95,7 @@ function SongNotFound({ songTitle, onGoBack }: { songTitle?: string; onGoBack: (
         )}
         <p className="mb-6 text-sm text-gray-500">
           Please check that the file still exists or try selecting a different song. It may also be
-          that loomo lost access to your local files. If that's the case, please re-scan
+          that loomou lost access to your local files. If that's the case, please re-scan
           directories in the "Manage Folders" menu.
         </p>
         <button

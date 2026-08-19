@@ -48,7 +48,7 @@ import {
   Undo2,
   Volume2,
   X,
-} from 'lucide-react'
+} from '@/icons'
 import Storage from '@/features/persist/storage'
 import { AnimatePresence, motion } from 'motion/react'
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
@@ -1786,7 +1786,7 @@ export default function Studio() {
                     className="h-9 w-[54px] shadow-[0_0_22px_rgba(108,121,240,0.55)]"
                   />
                   <span className="cursor-pointer text-2xl font-black tracking-tight text-white transition-all group-hover:text-[#9ba4ff]">
-                    loomo
+                    loomou
                   </span>
                 </Link>
                 <span className="shrink-0 text-xl font-light text-white/30">/</span>

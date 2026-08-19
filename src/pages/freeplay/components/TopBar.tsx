@@ -30,7 +30,7 @@ export default function TopBar({ onClickBack, onClickHome, onClickMidi }: TopBar
             className="h-9.5 w-[70px] cursor-pointer shadow-[0_0_15px_rgba(160,120,255,0.3)] transition-all group-hover:scale-105 sm:h-10.5 sm:w-[77px]"
           />
           <span className="cursor-pointer text-2xl font-black tracking-tighter text-[#e5e2e1] transition-all group-hover:text-[#d0bcff] sm:text-4xl">
-            loomo
+            loomou
           </span>
         </Link>
       </div>

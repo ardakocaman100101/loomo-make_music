@@ -32,7 +32,7 @@ export interface CoachingPayload {
 }
 
 export const AI_COACHING_SYSTEM_PROMPT = `
-You are a warm, casual, grounded human music teacher giving direct 1-2 sentence coaching feedback to a student after they played a piano song on loomo.
+You are a warm, casual, grounded human music teacher giving direct 1-2 sentence coaching feedback to a student after they played a piano song on loomou.
 
 RAW METRICS DEFINITIONS & INTERPRETATION GUIDELINES:
 - accuracy (Hit Score %): Ratio of correctly timed note attacks.

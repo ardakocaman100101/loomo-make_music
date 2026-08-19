@@ -1,6 +1,6 @@
 import type { LucideProps } from '@/icons'
 
-export function Midi({
+export function Target({
   width,
   height,
   size = 24,
@@ -8,7 +8,7 @@ export function Midi({
   className,
   onClick,
   color = 'currentColor',
-  strokeWidth = 1.75,
+  strokeWidth = 2,
   ...props
 }: LucideProps) {
   const w = width ?? size
@@ -28,10 +28,14 @@ export function Midi({
       strokeLinejoin="round"
       {...props}
     >
-      <rect x="2" y="5" width="20" height="14" rx="3" />
-      <path d="M6 5v8M10 5v8M14 5v8M18 5v8" />
-      <path d="M2 13h20" />
-      <circle cx="12" cy="16.5" r="1" fill="#6c79f0" />
+      <circle cx="12" cy="12" r="9" />
+      <line x1="12" y1="2" x2="12" y2="6" />
+      <line x1="12" y1="18" x2="12" y2="22" />
+      <line x1="2" y1="12" x2="6" y2="12" />
+      <line x1="18" y1="12" x2="22" y2="12" />
+      <circle cx="12" cy="12" r="3" fill={color} />
     </svg>
   )
 }
+
+export default Target

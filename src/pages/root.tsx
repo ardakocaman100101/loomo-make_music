@@ -12,26 +12,26 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-        <title>loomo</title>
+        <title>loomou</title>
         <meta name="author" content="Jake Fried" />
         <meta name="description" content="app for learning piano" />
 
         {/* Open Graph */}
-        <meta property="og:title" content="loomo" />
-        <meta property="og:site_name" content="loomo" />
+        <meta property="og:title" content="loomou" />
+        <meta property="og:site_name" content="loomou" />
         <meta property="og:description" content="app for learning piano" />
         <meta property="og:image" content="/images/mode_falling_notes_screenshot.png" />
-        <meta property="og:image:alt" content="loomo demo displaying falling notes visualization" />
+        <meta property="og:image:alt" content="loomou demo displaying falling notes visualization" />
 
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta
           name="twitter:image"
-          content="https://loomo.app/images/mode_falling_notes_screenshot.png"
+          content="https://loomou.app/images/mode_falling_notes_screenshot.png"
         />
         <meta
           name="twitter:image:alt"
-          content="loomo demo displaying falling notes visualization"
+          content="loomou demo displaying falling notes visualization"
         />
 
         {/* Favicons */}

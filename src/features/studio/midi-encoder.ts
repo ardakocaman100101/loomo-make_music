@@ -8,7 +8,7 @@ export function songToMidiBytes(song: Partial<Song>): Uint8Array {
   const midi = new Midi()
 
   // 1. Set name
-  midi.name = 'loomo Studio Session'
+  midi.name = 'loomou Studio Session'
 
   // 2. Set Tempos (BPMs)
   if (song.bpms && song.bpms.length > 0) {

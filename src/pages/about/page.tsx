@@ -14,7 +14,7 @@ import {
   Sparkles,
   Sun,
   Users,
-} from 'lucide-react'
+} from '@/icons'
 import { motion } from 'motion/react'
 import React, { useState } from 'react'
 import { Link } from 'react-router'
@@ -59,7 +59,7 @@ export default function AboutPage() {
 
         {/* Chic Structured Story Cards */}
         <div className="relative z-10 mx-auto w-full max-w-4xl space-y-7 md:space-y-8">
-          {/* Card 1: What is loomo? */}
+          {/* Card 1: What is loomou? */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -83,7 +83,7 @@ export default function AboutPage() {
                   isDarkMode ? 'text-[#F4F5F8]' : 'text-[#24273A]'
                 }`}
               >
-                What is loomo?
+                What is loomou?
               </h2>
             </div>
 
@@ -92,9 +92,9 @@ export default function AboutPage() {
                 isDarkMode ? 'text-[#A2A3B1]' : 'text-[#5E637D]'
               }`}
             >
-              loomo is a music making and learning platform designed for amateur musicians and
+              loomou is a music making and learning platform designed for amateur musicians and
               complete beginners. Visually engaging falling notes simplify playing for any skill
-              level. loomo AI collects hidden metrics while you play and tailors customized feedback
+              level. loomou AI collects hidden metrics while you play and tailors customized feedback
               for each session, allowing everyone to learn at their own pace without needing an
               instructor. In the native studio, users can edit and mix tracks to give them a creative
               edge.
@@ -120,7 +120,7 @@ export default function AboutPage() {
                 }`}
               >
                 <Sparkles className="h-5 w-5 shrink-0 text-[#6E61EA]" />
-                <span className="text-sm font-semibold">Real-Time loomo AI</span>
+                <span className="text-sm font-semibold">Real-Time loomou AI</span>
               </div>
               <div
                 className={`flex items-center gap-3 rounded-2xl p-4 transition-all duration-300 ${
@@ -168,10 +168,10 @@ export default function AboutPage() {
                 isDarkMode ? 'text-[#A2A3B1]' : 'text-[#5E637D]'
               }`}
             >
-              loomo started as a hobby project by a computer scientist who wanted to learn how to play
+              loomou started as a hobby project by a computer scientist who wanted to learn how to play
               keyboard. While there are many software options, none of them provide the freedom of
               uploading or editing music and they are remarkably expensive. This sparked a great
-              opportunity to combine coding skills with a passion for music. That is when loomo was
+              opportunity to combine coding skills with a passion for music. That is when loomou was
               born and many more features have been added since. The AI integration was a game
               changer, transforming the web app into a unique product without any comparable rival on
               the market. Over time, it slowly became an obsession, up to the point where it felt
@@ -266,14 +266,14 @@ export default function AboutPage() {
                     isDarkMode ? 'text-[#A2A3B1]' : 'text-[#5E637D]'
                   }`}
                 >
-                  loomo is built by a single developer in (my) free time outside of full-time work. If
+                  loomou is built by a single developer in (my) free time outside of full-time work. If
                   you would like to share feedback, it is very welcome!
                 </p>
               </div>
 
               <div className="pt-6">
                 <a
-                  href="mailto:contact@loomo.eu"
+                  href="mailto:contact@loomou.eu"
                   className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#6E61EA] to-[#7B6EF6] px-5 py-2.5 text-sm font-bold text-white shadow-[0_8px_24px_-4px_rgba(110,97,234,0.45),inset_0_1px_1px_rgba(255,255,255,0.3)] transition-all hover:from-[#7B6EF6] hover:to-[#887BFC] active:scale-95"
                 >
                   <Send className="h-4 w-4" />
@@ -311,7 +311,7 @@ function Navbar({
       }`}
     >
       <div className="mx-auto flex h-22 w-full max-w-7xl items-center justify-between px-4 sm:px-6">
-        {/* Left: loomo Logo + Wordmark */}
+        {/* Left: loomou Logo + Wordmark */}
         <div className="flex items-center">
           <Link to="/" className="group flex items-center gap-3.5 transition-opacity hover:opacity-90">
             <Logo
@@ -326,7 +326,7 @@ function Navbar({
                   : 'bg-gradient-to-b from-[#181028] via-[#331559] to-[#633BB9] bg-clip-text text-transparent'
               }`}
             >
-              loomo
+              loomou
             </span>
           </Link>
         </div>

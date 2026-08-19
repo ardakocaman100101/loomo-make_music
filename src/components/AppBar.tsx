@@ -49,7 +49,7 @@ export default function AppBar() {
               width={50}
               className="h-8 w-[50px] shadow-[0_0_20px_rgba(160,120,255,0.4)]"
             />
-            <span className="text-3xl font-black tracking-tighter text-[#e5e2e1]">loomo</span>
+            <span className="text-3xl font-black tracking-tighter text-[#e5e2e1]">loomou</span>
           </Link>
         </div>
 

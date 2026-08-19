@@ -82,7 +82,7 @@ export function UploadMidi({
             <div className="mb-5 flex items-center justify-between">
               <div>
                 <h3 className="font-['Space_Grotesk',sans-serif] text-xl font-bold text-white">Upload MIDI</h3>
-                <p className="mt-0.5 text-xs text-[#9D9CB1]">Add songs or multi-track stems to loomo</p>
+                <p className="mt-0.5 text-xs text-[#9D9CB1]">Add songs or multi-track stems to loomou</p>
               </div>
               <button
                 type="button"

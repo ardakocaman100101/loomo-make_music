@@ -20,7 +20,7 @@ import {
   Upload,
   Users,
   X,
-} from 'lucide-react'
+} from '@/icons'
 import { AnimatePresence, motion } from 'motion/react'
 import React, { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
@@ -127,7 +127,7 @@ function Navbar({
                   : 'bg-gradient-to-b from-[#181028] via-[#331559] to-[#633BB9] bg-clip-text text-transparent'
                 }`}
             >
-              loomo
+              loomou
             </span>
           </Link>
         </div>
@@ -285,14 +285,14 @@ function Hero({ isDarkMode }: { isDarkMode: boolean }) {
           <motion.span layout>music</motion.span>
         </div>
 
-        {/* Main loomo Title */}
+        {/* Main loomou Title */}
         <h1
           className={`font-['Space_Grotesk',sans-serif] bg-clip-text text-7xl leading-none font-black tracking-[-0.035em] text-transparent transition-all sm:text-8xl md:text-9xl ${isDarkMode
               ? 'bg-gradient-to-b from-[#FFFFFF] via-[#F4F5F8] to-[#888A95]'
               : 'bg-gradient-to-b from-[#181028] via-[#331559] to-[#633BB9]'
             }`}
         >
-          loomo
+          loomou
         </h1>
 
         {/* Subtitle (20% bigger & 20% higher contrast studio gray) */}
@@ -300,7 +300,7 @@ function Hero({ isDarkMode }: { isDarkMode: boolean }) {
           className={`mx-auto max-w-2xl font-['Inter',sans-serif] text-lg leading-relaxed font-normal transition-colors sm:text-xl md:text-[22px] ${isDarkMode ? 'text-[#B6B8C6]' : 'text-[#444860]'
             }`}
         >
-          Play or remix your favorite songs in just weeks. With loomo AI by your side, you can easily teach yourself without any prior experience
+          Play or remix your favorite songs in just weeks. With loomou AI by your side, you can easily teach yourself without any prior experience
         </p>
       </motion.div>
 
@@ -358,7 +358,7 @@ function HeroShowcase({
         {/* Background Image / Waterfall Canvas Preview */}
         <img
           src="/assets/home/hero-demo-preview.png"
-          alt="loomo piano waterfall demo"
+          alt="loomou piano waterfall demo"
           className="h-full w-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
           onError={(e) => {
             ; (e.target as HTMLImageElement).src = '/images/mode_falling_notes_screenshot.png'
@@ -405,9 +405,9 @@ const SLIDES = [
     id: 'ai',
     badge: 'AI Instructor',
     icon: Sparkles,
-    title: 'loomo AI',
+    title: 'loomou AI',
     description:
-      'Meet loomo AI, your personal music tutor. Just upload or create a song and perform it while loomo studies the track, watches you play and gives you instant feedback to help you improve',
+      'Meet loomou AI, your personal music tutor. Just upload or create a song and perform it while loomou studies the track, watches you play and gives you instant feedback to help you improve',
     cta: 'Upload a file →',
     isUpload: true,
     route: '',
@@ -419,7 +419,7 @@ const SLIDES = [
     icon: AudioWaveform,
     title: 'Studio',
     description:
-      'Edit or build your own songs right inside loomo using our beginner-friendly digital studio',
+      'Edit or build your own songs right inside loomou using our beginner-friendly digital studio',
     cta: 'Open Studio →',
     isUpload: false,
     route: '/studio',
@@ -431,7 +431,7 @@ const SLIDES = [
     icon: Piano,
     title: 'Play',
     description:
-      'Jump right into playing with loomo, no music background required. Just follow the engaging visuals while loomo collects all the data it needs to guide your progress',
+      'Jump right into playing with loomou, no music background required. Just follow the engaging visuals while loomou collects all the data it needs to guide your progress',
     cta: 'Start a session →',
     isUpload: false,
     route: '/freeplay',
@@ -650,7 +650,7 @@ function DemoVideoModal({
               className={`font-['Space_Grotesk',sans-serif] text-lg font-bold ${isDarkMode ? 'text-[#F4F5F8]' : 'text-[#24273A]'
                 }`}
             >
-              loomo piano showcase & interactive preview
+              loomou piano showcase & interactive preview
             </h3>
           </div>
         </div>

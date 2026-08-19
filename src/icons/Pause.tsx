@@ -1,6 +1,6 @@
 import type { LucideProps } from '@/icons'
 
-export function Midi({
+export function Pause({
   width,
   height,
   size = 24,
@@ -8,7 +8,7 @@ export function Midi({
   className,
   onClick,
   color = 'currentColor',
-  strokeWidth = 1.75,
+  fill = 'currentColor',
   ...props
 }: LucideProps) {
   const w = width ?? size
@@ -21,17 +21,13 @@ export function Midi({
       className={className}
       onClick={onClick}
       viewBox="0 0 24 24"
-      fill="none"
-      stroke={color}
-      strokeWidth={strokeWidth}
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      fill={fill}
       {...props}
     >
-      <rect x="2" y="5" width="20" height="14" rx="3" />
-      <path d="M6 5v8M10 5v8M14 5v8M18 5v8" />
-      <path d="M2 13h20" />
-      <circle cx="12" cy="16.5" r="1" fill="#6c79f0" />
+      <rect x="6" y="4" width="4" height="16" rx="2" />
+      <rect x="14" y="4" width="4" height="16" rx="2" />
     </svg>
   )
 }
+
+export default Pause

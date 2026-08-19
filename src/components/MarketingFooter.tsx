@@ -35,7 +35,7 @@ export function MarketingFooter() {
     <footer className="bg-[#131313] py-12 dark:bg-[#131313]">
       <div className="mx-auto max-w-(--breakpoint-lg) px-6">
         <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-          <span className="text-xs text-gray-400">loomo by Arda</span>
+          <span className="text-xs text-gray-400">loomou by Arda</span>
         </div>
       </div>
     </footer>

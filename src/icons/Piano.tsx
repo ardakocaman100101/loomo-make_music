@@ -1,6 +1,6 @@
 import type { LucideProps } from '@/icons'
 
-export function Midi({
+export function Piano({
   width,
   height,
   size = 24,
@@ -8,7 +8,7 @@ export function Midi({
   className,
   onClick,
   color = 'currentColor',
-  strokeWidth = 1.75,
+  strokeWidth = 2,
   ...props
 }: LucideProps) {
   const w = width ?? size
@@ -28,10 +28,13 @@ export function Midi({
       strokeLinejoin="round"
       {...props}
     >
-      <rect x="2" y="5" width="20" height="14" rx="3" />
-      <path d="M6 5v8M10 5v8M14 5v8M18 5v8" />
-      <path d="M2 13h20" />
-      <circle cx="12" cy="16.5" r="1" fill="#6c79f0" />
+      <line x1="4" y1="9" x2="4" y2="15" />
+      <line x1="8.5" y1="5" x2="8.5" y2="19" strokeWidth="2.5" />
+      <line x1="13" y1="8" x2="13" y2="16" />
+      <line x1="17.5" y1="3" x2="17.5" y2="21" strokeWidth="2.5" />
+      <line x1="22" y1="10" x2="22" y2="14" />
     </svg>
   )
 }
+
+export default Piano

@@ -1,9 +1,31 @@
-import { LucideProps } from '@/icons'
+import type { LucideProps } from '@/icons'
 
-export function StopRecord(props: LucideProps) {
+export function StopRecord({
+  width,
+  height,
+  size = 24,
+  style,
+  className,
+  onClick,
+  fill = 'currentColor',
+  ...props
+}: LucideProps) {
+  const w = width ?? size
+  const h = height ?? size
   return (
-    <svg width={props.size} height={props.size} viewBox="0 0 27 27" {...props}>
-      <rect x="3" y="3" width="21" height="21" className="hover:fill-purple-hover fill-red-500" />
+    <svg
+      width={w}
+      height={h}
+      style={style}
+      className={className}
+      onClick={onClick}
+      viewBox="0 0 24 24"
+      fill={fill}
+      {...props}
+    >
+      <rect x="4" y="4" width="16" height="16" rx="4" className="hover:fill-purple-hover fill-red-500" />
     </svg>
   )
 }
+
+export default StopRecord
