@@ -306,10 +306,7 @@ export default function LibraryPage() {
             transition={{ duration: 0.5 }}
             className="space-y-3"
           >
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#6E61EA]/30 bg-[#6E61EA]/10 px-4 py-1.5 text-xs font-bold tracking-wider text-[#6E61EA]">
-              <LibraryIcon className="h-3.5 w-3.5" />
-              <span>loomou library</span>
-            </div>
+            {/* Page Title */}
 
             <h1
               className={`font-['Space_Grotesk',sans-serif] bg-clip-text text-5xl leading-tight font-black tracking-[-0.035em] text-transparent transition-all sm:text-6xl md:text-7xl ${
@@ -748,11 +745,11 @@ function Navbar({
       <div className="mx-auto flex h-22 w-full max-w-7xl items-center justify-between px-4 sm:px-6">
         {/* Left: loomou Logo + Wordmark */}
         <div className="flex items-center">
-          <Link to="/" className="group flex items-center gap-3.5 transition-opacity hover:opacity-90">
+          <Link to="/" className="group flex items-center gap-1.5 transition-opacity hover:opacity-90">
             <Logo
-              height={46}
-              width={88}
-              className="h-11 w-22 drop-shadow-[0_0_22px_rgba(110,97,234,0.5)] transition-transform duration-300 group-hover:scale-105"
+              height={62}
+              width={104}
+              className="h-[62px] w-auto aspect-[5/3] drop-shadow-[0_0_22px_rgba(110,97,234,0.5)] transition-transform duration-300 group-hover:scale-105"
             />
             <span
               className={`font-['Space_Grotesk',sans-serif] text-4xl leading-none font-black tracking-[-0.03em] transition-all sm:text-5xl ${

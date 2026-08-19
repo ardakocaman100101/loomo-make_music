@@ -19,7 +19,7 @@ export const feedbackColors: Record<string, string> = {
   yellow: '#f1c40f',
   grey: '#95a5a6',
   red: '#e74c3c',
-  purple: '#b08eff',
+  purple: '#1d4ed8',
 }
 
 // ---------------------------------------------------------------------------
@@ -51,7 +51,7 @@ export function getRgbaColor(hexOrName: string, alpha: number): string {
     result = hexOrName.replace('rgb', 'rgba').replace(')', `, ${alpha})`)
   } else {
     const namedMap: Record<string, string> = {
-      purple: '176, 142, 255',
+      purple: '29, 78, 216',
       orange: '243, 156, 18',
       green: '46, 204, 113',
       blue: '52, 152, 219',

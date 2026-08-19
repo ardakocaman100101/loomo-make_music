@@ -17,11 +17,9 @@ export default function TopBar({ onClickMidi }: TopBarProps) {
           <ArrowLeft size={24} />
         </Link>
       </ButtonWithTooltip>
-      <span className="absolute left-1/2 -translate-x-1/2">Training</span>
-      <ButtonWithTooltip tooltip="Choose a MIDI device" className="ml-auto" onClick={onClickMidi}>
-        <Midi size={24} />
-      </ButtonWithTooltip>
-      {!isMobile() && <VolumeSliderButton />}
+      <div className="ml-auto flex items-center gap-3">
+        {!isMobile() && <VolumeSliderButton />}
+      </div>
     </div>
   )
 }

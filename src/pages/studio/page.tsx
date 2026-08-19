@@ -12,6 +12,7 @@ import { songToMidiBytes } from '@/features/studio/midi-encoder'
 import { getSynthStub, InstrumentName, Synth } from '@/features/synth'
 import gmInstruments from '@/features/synth/instruments'
 import { predictSongFingerings } from '@/features/theory/fingering'
+import { getTrackColorPalette } from '@/features/SongVisualization/renderer/trackColors'
 import { useEventListener } from '@/hooks'
 import { LeftHand, Logo, RightHand } from '@/icons'
 import type { Song, SongConfig, SongNote, SongSource, Track, Tracks } from '@/types'
@@ -1778,12 +1779,12 @@ export default function Studio() {
                 <Link
                   to="/"
                   onClick={() => stopPlayback()}
-                  className="group mr-1 flex shrink-0 items-center gap-2"
+                  className="group mr-1 flex shrink-0 items-center gap-1"
                 >
                   <Logo
-                    height={36}
-                    width={54}
-                    className="h-9 w-[54px] shadow-[0_0_22px_rgba(108,121,240,0.55)]"
+                    height={50}
+                    width={84}
+                    className="h-[50px] w-auto aspect-[5/3] drop-shadow-[0_0_22px_rgba(108,121,240,0.55)]"
                   />
                   <span className="cursor-pointer text-2xl font-black tracking-tight text-white transition-all group-hover:text-[#9ba4ff]">
                     loomou
@@ -2008,13 +2009,20 @@ export default function Studio() {
                       }`}
                     >
                       <div className="mb-3 flex items-center justify-between">
-                        <input
-                          type="text"
-                          value={track.name || ''}
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={(e) => updateTrackName(trackId, e.target.value)}
-                          className="w-3/4 bg-transparent text-sm font-bold tracking-wide text-white focus:border-b focus:border-[#9ba4ff] focus:outline-none"
-                        />
+                        <div className="flex items-center gap-2 flex-1">
+                          <div
+                            className="h-3 w-3 rounded-full shrink-0 shadow-sm"
+                            style={{ backgroundColor: getTrackColorPalette(trackId).base }}
+                            title={`Track ${trackId + 1} Color`}
+                          />
+                          <input
+                            type="text"
+                            value={track.name || ''}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => updateTrackName(trackId, e.target.value)}
+                            className="w-full bg-transparent text-sm font-bold tracking-wide text-white focus:border-b focus:border-[#9ba4ff] focus:outline-none"
+                          />
+                        </div>
                         {Object.keys(tracks).length > 1 && (
                           <button
                             onClick={(e) => {
@@ -2377,6 +2385,9 @@ export default function Studio() {
                   const noteName = getNoteName(note.midiNote)
                   const badgeFontSize = Math.max(10, Math.min(18, Math.floor(width * 0.52)))
 
+                  const trackPalette = getTrackColorPalette(note.track ?? 0)
+                  const noteColor = trackPalette.base
+
                   return (
                     <div
                       key={index}
@@ -2387,17 +2398,17 @@ export default function Studio() {
                       onMouseLeave={() => setHoveredNoteIndex(null)}
                       className={`absolute cursor-move overflow-hidden rounded-2xl border transition-shadow select-none ${
                         isSelected
-                          ? 'z-10 border-white bg-[#9ba4ff] text-[#131313] shadow-[0_0_20px_rgba(155,164,255,0.9)]'
-                          : isNoteActive
-                            ? 'border-[#9ba4ff]/60 bg-[#6c79f0] text-white shadow-[0_0_12px_rgba(108,121,240,0.4)]'
-                            : 'border-white/20 bg-white/30 text-white'
+                          ? 'z-10 border-white bg-white text-[#131313] shadow-[0_0_20px_rgba(255,255,255,0.9)]'
+                          : 'border-white/20 text-white'
                       }`}
                       style={{
                         left: `${left}px`,
                         width: `${width}px`,
                         top: `${top}px`,
                         height: `${height}px`,
-                        opacity: isSelected ? 1 : 0.5 + velocityFactor * 0.5,
+                        backgroundColor: isSelected ? undefined : noteColor,
+                        opacity: isSelected ? 1 : isNoteActive ? 0.85 + velocityFactor * 0.15 : 0.4,
+                        boxShadow: isNoteActive && !isSelected ? `0 0 12px ${noteColor}66` : undefined,
                       }}
                     >
                       {hoveredNoteIndex === index && (

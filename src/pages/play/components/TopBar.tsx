@@ -64,11 +64,11 @@ export default function TopBar({
 
       {/* Center: Absolute centered loomo Identity */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-        <Link to="/" onClick={onClickHome} className="group flex items-center gap-2.5 sm:gap-3">
+        <Link to="/" onClick={onClickHome} className="group flex items-center gap-1.5">
           <Logo
-            height={38}
-            width={70}
-            className="h-9.5 w-[70px] cursor-pointer shadow-[0_0_15px_rgba(160,120,255,0.3)] transition-all group-hover:scale-105 sm:h-10.5 sm:w-[77px]"
+            height={54}
+            width={90}
+            className="h-[54px] w-auto aspect-[5/3] cursor-pointer drop-shadow-[0_0_15px_rgba(160,120,255,0.3)] transition-all group-hover:scale-105 sm:h-[60px]"
           />
           <span className="cursor-pointer text-2xl font-black tracking-tighter text-[#e5e2e1] transition-all group-hover:text-[#d0bcff] sm:text-4xl">
             loomou
@@ -76,11 +76,8 @@ export default function TopBar({
         </Link>
       </div>
 
-      {/* Right side: MIDI Device, Volume, Stats Toggles */}
+      {/* Right side: Volume, Stats Toggles */}
       <div className="ml-auto flex items-center gap-3 sm:gap-6">
-        <ButtonWithTooltip tooltip="Choose a MIDI device" onClick={onClickMidi}>
-          <Midi size={28} className="sm:h-8 sm:w-8" />
-        </ButtonWithTooltip>
 
         {!isMobile() && (
           <div className="relative z-[100]">

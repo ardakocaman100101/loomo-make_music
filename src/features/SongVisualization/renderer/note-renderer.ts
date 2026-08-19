@@ -9,6 +9,7 @@ import { getRelativePointerCoordinates } from '../../pointer'
 import { getOptimalFontSize } from '../utils'
 import { feedbackColors, getRgbaColor, noteColors } from './colors'
 import { getItemStartEnd, projectPoint, type State } from './state'
+import { getDynamicNoteColor } from './trackColors'
 
 const TEXT_FONT = 'monospace'
 
@@ -17,9 +18,8 @@ const TEXT_FONT = 'monospace'
 // ---------------------------------------------------------------------------
 
 function getNoteDefaultColor(state: State, note: SongNote): string {
-  const hand = state.hands[note.track]?.hand ?? 'both'
-  const keyType = isBlack(note.midiNote) ? 'black' : 'white'
-  return hand === 'left' ? noteColors.left[keyType] : noteColors.right[keyType]
+  const pitchRange = state.trackPitchRanges?.get(note.track ?? 0)
+  return getDynamicNoteColor(note, pitchRange)
 }
 
 /**

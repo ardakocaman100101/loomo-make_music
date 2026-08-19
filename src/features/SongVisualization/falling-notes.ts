@@ -33,6 +33,7 @@ import { renderHitLine, renderHorizonFade, renderLanes } from './renderer/lanes'
 import { renderMeasure, renderRange } from './renderer/overlays'
 import { renderFallingNote, renderPiano } from './renderer/note-renderer'
 import { getItemStartEnd, type State } from './renderer/state'
+import { computeTrackPitchRanges } from './renderer/trackColors'
 
 // ---------------------------------------------------------------------------
 // Viewport
@@ -143,6 +144,11 @@ function deriveState(givenState: GivenState): State {
     givenState.player.setTolerance(perfectRangeMs, goodRangeMs)
   }
 
+  const allSongNotes: SongNote[] = givenState.items
+    ? (givenState.items.filter((i) => i.type === 'note') as SongNote[])
+    : []
+  const trackPitchRanges = computeTrackPitchRanges(allSongNotes)
+
   lastState = {
     ...givenState,
     pianoMeasurements,
@@ -150,6 +156,7 @@ function deriveState(givenState: GivenState): State {
     pianoTopY,
     pianoWidth,
     noteHitY,
+    trackPitchRanges,
   }
   return lastState
 }

@@ -1,3 +1,4 @@
+import { LoomouAiCharacter } from '@/components/LoomouAiCharacter'
 import { CoachingPayload, generateAICoachingAdvice } from '@/features/ai/coaching'
 import { usePlayer } from '@/features/player'
 import { sessionScoreHistory } from '@/features/player/scoring'
@@ -278,13 +279,13 @@ export default function CompletionModal({
   const hitMetrics = [
     { label: 'Perfect', value: perfect, tone: 'text-emerald-600' },
     { label: 'Early', value: early, tone: 'text-amber-500' },
-    { label: 'Late', value: late, tone: 'text-[#6c79f0]' },
+    { label: 'Late', value: late, tone: 'text-[#1d4ed8]' },
     { label: 'Miss', value: miss, tone: 'text-rose-500' },
   ]
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-md animate-in fade-in duration-300">
-      <div className="glass-shell relative flex w-full max-w-[390px] flex-col overflow-hidden rounded-3xl p-4 text-gray-900 animate-in zoom-in-95 duration-200 shadow-2xl">
+      <div className="glass-shell relative flex w-full max-w-[460px] flex-col overflow-hidden rounded-3xl p-4.5 text-gray-900 animate-in zoom-in-95 duration-200 shadow-2xl">
         
         {/* Header */}
         <header className="relative mb-2.5 flex items-center justify-center">
@@ -376,7 +377,7 @@ export default function CompletionModal({
               {pctP > 0 && (
                 <div
                   style={{ flexBasis: `${pctP}%` }}
-                  className="flex items-center justify-center rounded-full bg-[#6c79f0] text-[10px] font-bold text-white transition-all duration-500"
+                  className="flex items-center justify-center rounded-full bg-[#1d4ed8] text-[10px] font-bold text-white transition-all duration-500 shadow-sm"
                   title={`Late Press (tP): ${Math.round(pctP)}%`}
                 >
                   {pctP >= 14 && `${Math.round(pctP)}%`}
@@ -431,24 +432,14 @@ export default function CompletionModal({
             </div>
           </section>
 
-          {/* Section 3: AI Coach Advice */}
-          <section className="rounded-2xl border border-[#6c79f0]/20 bg-[#f0f2ff]/80 p-2.5">
-            <p className="label-caps mb-1 flex items-center gap-1.5 text-[#6c79f0] select-none">
-              <Sparkles className="size-3.5" /> AI Coach Advice
-            </p>
-            {isAiLoading ? (
-              <div className="flex h-5 w-full animate-pulse items-center gap-2 rounded-xl bg-indigo-100/50 px-2">
-                <div className="h-2 w-3/4 rounded-full bg-indigo-200/80" />
-                <div className="h-2 w-1/4 rounded-full bg-indigo-200/50" />
-              </div>
-            ) : (
-              <p className="text-xs font-semibold leading-relaxed text-gray-800">
-                {displayedAiText}
-                {displayedAiText.length < (aiFeedback?.length ?? 0) && (
-                  <span className="ml-0.5 inline-block h-3 w-0.5 animate-pulse bg-[#6c79f0] align-middle" />
-                )}
-              </p>
-            )}
+          {/* Section 3: Animated loomou AI Character & Modern Speech Bubble */}
+          <section className="pt-0.5">
+            <LoomouAiCharacter
+              size="md"
+              isDarkMode={false}
+              message={displayedAiText}
+              isLoading={isAiLoading}
+            />
           </section>
 
         </div>

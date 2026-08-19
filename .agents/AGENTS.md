@@ -47,21 +47,21 @@ All agents MUST adapt their thinking depth, token expenditure, and execution eff
    - **PM:** Proactively ask targeted clarifying questions to the boss to eliminate ambiguity; keep requirements and test steps crisp and clear.
    - **Figma:** 1-2 sentence UI/layout or token adjustment note. Wrap up fast.
    - **Developer:** Minimal code edit, quick fix, wrap up immediately. Implementation notes must be at most 1 short sentence.
-   - **Tester:** Quick single browser check, 1-line QA table row, wrap up fast.
+   - **Tester:** Fast check of primary target and immediate parent; audit core data count integrity; wrap up fast.
 
 2. **`Value = Medium` or `Severity = Medium` (Balanced Integration & Proper Implementation):**
    - Standard tasks/bugs requiring proper attention to integration and clean implementation.
    - **PM:** Engage in back-and-forth clarifying Q&A with the boss on UX, edge cases, and interactions; write clear, concise requirements ensuring clean integration.
    - **Figma:** Clean component UI/UX specs, token mapping, layout structure, and essential interaction states.
    - **Developer:** Clean implementation focusing on proper component integration and state handling.
-   - **Tester:** Standard browser test execution covering main user flow and integration points.
+   - **Tester:** Query Gitlab Orbit for 1st and 2nd-degree dependents; standard browser test execution covering main flow, transitive views, and data inventory integrity (e.g. song counts, soundfont presence).
 
 3. **`Value = High` or `Severity = High` (Deep Systemic Architecture & Thorough Testing):**
    - Critical system features / high-severity bugs requiring multi-perspective analysis and thorough execution.
    - **PM:** Deep back-and-forth collaboration with the boss covering product vision, user journey, architecture, and edge cases; write holistic requirements.
    - **Figma:** Comprehensive design architecture, responsive breakpoints, audio DAW aesthetic standards, micro-interactions, and accessibility.
    - **Developer:** Design carefully as a system architecture (not a quick patch), considering root causes, performance, error handling, and clean modularity.
-   - **Tester:** Deep edge-case testing within full app context (track solos, loop bounds, audio context resume, MIDI inputs, visual state).
+   - **Tester:** Deep edge-case testing within full app context (track solos, loop bounds, audio context resume, MIDI inputs, visual state, data source schema & manifest integrity).
 
 ---
 

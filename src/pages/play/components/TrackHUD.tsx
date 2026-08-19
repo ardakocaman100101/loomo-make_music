@@ -1,4 +1,5 @@
 import { LeftHand, RightHand } from '@/icons'
+import { getTrackColorPalette } from '@/features/SongVisualization/renderer/trackColors'
 import { Song, SongConfig } from '@/types'
 import { formatInstrumentName } from '@/utils'
 import clsx from 'clsx'
@@ -68,12 +69,19 @@ export default function TrackHUD({
             )}
           >
             <div className="flex items-center justify-between">
-              <span
-                className="max-w-[90px] truncate text-[11px] font-bold text-white sm:max-w-[100px] lg:max-w-[110px] lg:text-xs"
-                title={track.name}
-              >
-                {track.name || formatInstrumentName(settings?.instrument || track.instrument)}
-              </span>
+              <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-1">
+                <div
+                  className="h-2 w-2 rounded-full shrink-0 shadow-sm"
+                  style={{ backgroundColor: getTrackColorPalette(id).base }}
+                  title={`Track ${id + 1} Color`}
+                />
+                <span
+                  className="truncate text-[11px] font-bold text-white lg:text-xs"
+                  title={track.name}
+                >
+                  {track.name || formatInstrumentName(settings?.instrument || track.instrument)}
+                </span>
+              </div>
               <div className="flex items-center gap-0.5 sm:gap-1">
                 <button
                   onClick={() => onSelectHand?.(id, 'left')}

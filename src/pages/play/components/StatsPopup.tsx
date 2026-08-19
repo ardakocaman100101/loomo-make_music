@@ -46,10 +46,10 @@ export function StatsPopup({}) {
         {/* Row 2: Late (Blue) & Miss (Red) */}
         <div className="grid grid-cols-2 gap-1 sm:gap-1.5">
           <div className="flex min-w-0 flex-col items-center rounded-lg border border-white/5 bg-white/5 px-1.5 py-1 sm:rounded-xl sm:px-2 sm:py-1.5">
-            <span className="text-center text-[8px] font-bold tracking-wider text-purple-400/90 select-none sm:text-[9px]">
+            <span className="text-center text-[8px] font-bold tracking-wider text-[#1d4ed8] select-none sm:text-[9px]">
               LATE
             </span>
-            <span className="mt-0.5 text-sm font-bold text-purple-400 leading-none sm:mt-1 sm:text-lg lg:text-xl">{late}</span>
+            <span className="mt-0.5 text-sm font-bold text-[#1d4ed8] leading-none sm:mt-1 sm:text-lg lg:text-xl">{late}</span>
           </div>
           <div className="flex min-w-0 flex-col items-center rounded-lg border border-white/5 bg-white/5 px-1.5 py-1 sm:rounded-xl sm:px-2 sm:py-1.5">
             <span className="text-center text-[8px] font-bold tracking-wider text-red-500/90 select-none sm:text-[9px]">

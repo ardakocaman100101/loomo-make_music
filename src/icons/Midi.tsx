@@ -8,7 +8,7 @@ export function Midi({
   className,
   onClick,
   color = 'currentColor',
-  strokeWidth = 1.75,
+  strokeWidth = 2,
   ...props
 }: LucideProps) {
   const w = width ?? size
@@ -28,10 +28,18 @@ export function Midi({
       strokeLinejoin="round"
       {...props}
     >
-      <rect x="2" y="5" width="20" height="14" rx="3" />
-      <path d="M6 5v8M10 5v8M14 5v8M18 5v8" />
-      <path d="M2 13h20" />
-      <circle cx="12" cy="16.5" r="1" fill="#6c79f0" />
+      {/* Rigid Opaque Keyboard Chassis */}
+      <rect x="2" y="5" width="20" height="14" rx="2.5" stroke={color} strokeWidth={strokeWidth} />
+
+      {/* Solid Opaque Black Keycaps */}
+      <rect x="5.25" y="5" width="2.5" height="7.5" rx="0.75" fill={color} stroke={color} strokeWidth="0.5" />
+      <rect x="9.5" y="5" width="2.5" height="7.5" rx="0.75" fill={color} stroke={color} strokeWidth="0.5" />
+      <rect x="14.75" y="5" width="2.5" height="7.5" rx="0.75" fill={color} stroke={color} strokeWidth="0.5" />
+
+      {/* Crisp White Key Separators */}
+      <line x1="7.75" y1="12.5" x2="7.75" y2="19" stroke={color} strokeWidth={strokeWidth} />
+      <line x1="13" y1="12.5" x2="13" y2="19" stroke={color} strokeWidth={strokeWidth} />
+      <line x1="18.25" y1="12.5" x2="18.25" y2="19" stroke={color} strokeWidth={strokeWidth} />
     </svg>
   )
 }

@@ -70,14 +70,8 @@ export default function AboutPage() {
                 : 'border border-[#24273A]/[0.07] bg-white/90 backdrop-blur-2xl shadow-[0_25px_65px_-10px_rgba(36,39,58,0.07)]'
             }`}
           >
-            <div className="flex items-center gap-3.5 pb-2">
-              <div
-                className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors ${
-                  isDarkMode ? 'bg-[#7569EC]/15 text-[#7569EC]' : 'bg-[#6E61EA]/10 text-[#6E61EA]'
-                }`}
-              >
-                <Sparkles className="h-5 w-5" />
-              </div>
+            <div className="flex items-center gap-3 pb-2">
+              <Logo height={32} width={52} className="h-8 w-auto aspect-[5/3]" />
               <h2
                 className={`font-['Space_Grotesk',sans-serif] text-2xl font-black tracking-tight transition-colors sm:text-3xl ${
                   isDarkMode ? 'text-[#F4F5F8]' : 'text-[#24273A]'
@@ -313,11 +307,11 @@ function Navbar({
       <div className="mx-auto flex h-22 w-full max-w-7xl items-center justify-between px-4 sm:px-6">
         {/* Left: loomou Logo + Wordmark */}
         <div className="flex items-center">
-          <Link to="/" className="group flex items-center gap-3.5 transition-opacity hover:opacity-90">
+          <Link to="/" className="group flex items-center gap-1.5 transition-opacity hover:opacity-90">
             <Logo
-              height={46}
-              width={88}
-              className="h-11 w-22 drop-shadow-[0_0_22px_rgba(110,97,234,0.5)] transition-transform duration-300 group-hover:scale-105"
+              height={62}
+              width={104}
+              className="h-[62px] w-auto aspect-[5/3] drop-shadow-[0_0_22px_rgba(110,97,234,0.5)] transition-transform duration-300 group-hover:scale-105"
             />
             <span
               className={`font-['Space_Grotesk',sans-serif] text-4xl leading-none font-black tracking-[-0.03em] transition-all sm:text-5xl ${

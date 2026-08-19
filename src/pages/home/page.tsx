@@ -115,11 +115,11 @@ function Navbar({
       <div className="mx-auto flex h-22 w-full max-w-7xl items-center justify-between px-4 sm:px-6">
         {/* Left: loomo Logo + Wordmark (20% bigger, tighter fit) */}
         <div className="flex items-center">
-          <Link to="/" className="group flex items-center gap-3.5 transition-opacity hover:opacity-90">
+          <Link to="/" className="group flex items-center gap-1.5 transition-opacity hover:opacity-90">
             <Logo
-              height={46}
-              width={88}
-              className="h-11 w-22 drop-shadow-[0_0_22px_rgba(110,97,234,0.5)] transition-transform duration-300 group-hover:scale-105"
+              height={62}
+              width={104}
+              className="h-[62px] w-auto aspect-[5/3] drop-shadow-[0_0_22px_rgba(110,97,234,0.5)] transition-transform duration-300 group-hover:scale-105"
             />
             <span
               className={`font-['Space_Grotesk',sans-serif] text-4xl leading-none font-black tracking-[-0.03em] transition-all sm:text-5xl ${isDarkMode
@@ -535,25 +535,59 @@ function FeatureCarousel({ isDarkMode }: { isDarkMode: boolean }) {
               </div>
             </div>
 
-            {/* Slide Right: Visual Card Preview */}
+            {/* Slide Right: Visual Card Preview / AI Character */}
             <div
-              className={`relative aspect-[4/3] w-full overflow-hidden rounded-2xl shadow-inner transition-colors ${isDarkMode
+              className={`relative aspect-[4/3] w-full overflow-hidden rounded-2xl shadow-inner transition-colors flex items-center justify-center ${
+                isDarkMode
                   ? 'border border-white/[0.08] bg-[#161828]'
                   : 'border border-[#24273A]/[0.06] bg-[#EEF1FA]'
-                }`}
+              }`}
             >
-              <img
-                src={slide.image}
-                alt={slide.title}
-                className="h-full w-full object-cover object-center"
-                onError={(e) => {
-                  ; (e.target as HTMLImageElement).src = '/images/mode_falling_notes_screenshot.png'
-                }}
-              />
-              <div
-                className={`absolute inset-0 bg-gradient-to-tr via-transparent to-transparent ${isDarkMode ? 'from-[#101223]/80' : 'from-[#F6F7FB]/60'
-                  }`}
-              />
+              {slide.id === 'ai' ? (
+                <div className="relative flex h-full w-full flex-col items-center justify-center p-6">
+                  {/* Ambient Glow */}
+                  <div className="relative flex items-center justify-center">
+                    <div
+                      className={`absolute inset-0 rounded-full blur-2xl transition-all duration-500 opacity-75 ${
+                        isDarkMode ? 'bg-[#6c79f0]/40' : 'bg-[#6c79f0]/25'
+                      }`}
+                    />
+                    <Logo
+                      width={120}
+                      height={72}
+                      className="relative drop-shadow-[0_0_24px_rgba(108,121,240,0.6)] animate-pulse"
+                    />
+                  </div>
+                  <div
+                    className={`mt-5 w-full max-w-sm rounded-2xl border p-3.5 text-center shadow-lg transition-all ${
+                      isDarkMode
+                        ? 'border-white/10 bg-[#101223]/90 text-white'
+                        : 'border-[#6c79f0]/20 bg-white/95 text-gray-900'
+                    }`}
+                  >
+                    <p className="text-xs font-black tracking-wider text-[#6c79f0] uppercase">loomou AI Tutor</p>
+                    <p className="mt-1 text-xs sm:text-[13px] font-semibold opacity-90 leading-relaxed">
+                      "Ready whenever you are! Upload a song or start playing to get personalized guidance."
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <img
+                    src={slide.image}
+                    alt={slide.title}
+                    className="h-full w-full object-cover object-center"
+                    onError={(e) => {
+                      ;(e.target as HTMLImageElement).src = '/images/mode_falling_notes_screenshot.png'
+                    }}
+                  />
+                  <div
+                    className={`absolute inset-0 bg-gradient-to-tr via-transparent to-transparent ${
+                      isDarkMode ? 'from-[#101223]/80' : 'from-[#F6F7FB]/60'
+                    }`}
+                  />
+                </>
+              )}
             </div>
           </motion.div>
         </AnimatePresence>

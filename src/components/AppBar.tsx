@@ -43,11 +43,11 @@ export default function AppBar() {
 
         {/* Centered Logo + Title */}
         <div className="absolute left-1/2 flex -translate-x-1/2 items-center justify-center">
-          <Link to="/" className="flex items-center gap-3 transition hover:opacity-80">
+          <Link to="/" className="flex items-center gap-1.5 transition hover:opacity-80">
             <Logo
-              height={32}
-              width={50}
-              className="h-8 w-[50px] shadow-[0_0_20px_rgba(160,120,255,0.4)]"
+              height={45}
+              width={75}
+              className="h-11 w-auto aspect-[5/3] drop-shadow-[0_0_15px_rgba(160,120,255,0.4)]"
             />
             <span className="text-3xl font-black tracking-tighter text-[#e5e2e1]">loomou</span>
           </Link>

@@ -9,6 +9,7 @@ export type State = GivenState & {
   pianoTopY: number
   pianoWidth: number
   noteHitY: number
+  trackPitchRanges?: Map<number, { minPitch: number; maxPitch: number }>
 }
 
 /**
