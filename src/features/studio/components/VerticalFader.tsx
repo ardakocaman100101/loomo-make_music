@@ -62,9 +62,9 @@ export const VerticalFader: React.FC<VerticalFaderProps> = ({
   }
 
   return (
-    <div className={`flex flex-col items-center select-none ${className}`}>
+    <div className={`flex w-[44px] min-w-[44px] shrink-0 flex-col items-center select-none ${className}`}>
       {/* Component Label (Level 3: Component Label) */}
-      <span className="mb-0.5 max-w-[65px] truncate text-center text-[10px] font-semibold tracking-wide text-white/70 uppercase">
+      <span className="mb-0.5 w-full truncate text-center text-[10px] font-semibold tracking-wide text-white/70 uppercase">
         {label}
       </span>
 

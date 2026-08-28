@@ -315,7 +315,7 @@ export default function CompletionModal({
           <section className="glass-panel rounded-2xl p-3">
             <div className="mb-2 flex items-end justify-between">
               <div>
-                <p className="label-caps text-[#6c79f0] select-none">Hit Score</p>
+                <p className="label-caps text-[#6c79f0] select-none">Accuracy</p>
                 <p className="text-4xl font-black leading-none tracking-tight text-gray-900 mt-0.5">
                   {accuracy}
                   <span className="text-2xl font-bold text-gray-400 ml-0.5">%</span>
@@ -342,7 +342,7 @@ export default function CompletionModal({
           <section className="glass-panel rounded-2xl p-3">
             <div className="mb-2 flex items-end justify-between">
               <div>
-                <p className="label-caps text-[#6c79f0] select-none">Duration Score</p>
+                <p className="label-caps text-[#6c79f0] select-none">Rhythm</p>
                 <p className="text-4xl font-black leading-none tracking-tight text-gray-900 mt-0.5">
                   {currentDurationScore}
                   <span className="text-2xl font-bold text-gray-400 ml-0.5">%</span>

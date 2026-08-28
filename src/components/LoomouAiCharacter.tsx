@@ -1,5 +1,5 @@
 import { cn } from '@/utils'
-import React, { useRef, useEffect } from 'react'
+import React from 'react'
 
 interface LoomouAiCharacterProps {
   message?: string
@@ -16,14 +16,6 @@ export function LoomouAiCharacter({
   className,
   isDarkMode = false,
 }: LoomouAiCharacterProps) {
-  const videoRef = useRef<HTMLVideoElement>(null)
-
-  useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.play().catch(() => {})
-    }
-  }, [])
-
   const containerSizes = {
     sm: 'w-24 h-16 sm:w-28 sm:h-20',
     md: 'w-32 h-22 sm:w-36 sm:h-26',
@@ -34,27 +26,14 @@ export function LoomouAiCharacter({
     <div className={cn('flex flex-row items-center gap-3 w-full', className)}>
       {/* 35% Animated loomou AI Character Container */}
       <div className="relative w-[32%] sm:w-[35%] shrink-0 flex items-center justify-center">
-        {/* Ambient Glow Aura */}
-        <div
-          className={cn(
-            'absolute inset-0 rounded-full blur-xl transition-all duration-500 opacity-60 pointer-events-none',
-            isDarkMode ? 'bg-[#6c79f0]/40' : 'bg-[#6c79f0]/25',
-          )}
-        />
-
-        {/* Video Animation Player */}
-        <div className="relative w-full max-w-[125px] aspect-[540/330] flex items-center justify-center drop-shadow-[0_0_16px_rgba(108,121,240,0.45)]">
-          <video
-            ref={videoRef}
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="h-full w-full object-contain select-none pointer-events-none"
-          >
-            <source src="/loomou_animation.webm" type="video/webm" />
-            <source src="/loomou_animation.mp4" type="video/mp4" />
-          </video>
+        {/* Animated Character Image (100% Transparent, No Background, No Blinking) */}
+        <div className="relative w-full max-w-[125px] aspect-[540/330] flex items-center justify-center">
+          <img
+            src="/loomou_animation.webp"
+            alt="loomou AI character"
+            className="h-full w-full object-contain select-none pointer-events-none drop-shadow-[0_0_16px_rgba(108,121,240,0.45)]"
+            draggable={false}
+          />
         </div>
       </div>
 

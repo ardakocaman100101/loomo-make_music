@@ -460,9 +460,10 @@ export function registerCustomSketch(id: string, title: string, duration: number
     duration,
   }
   const currentUploaded = store.get(uploadedSongsAtom)
-  if (!currentUploaded.some((s) => s.id === id)) {
-    const newUploaded = [...currentUploaded, metadata]
-    store.set(uploadedSongsAtom, newUploaded)
-    idb.set('UPLOADED_SONGS', newUploaded)
-  }
+  const exists = currentUploaded.some((s) => s.id === id)
+  const newUploaded = exists
+    ? currentUploaded.map((s) => (s.id === id ? { ...s, title, duration } : s))
+    : [...currentUploaded, metadata]
+  store.set(uploadedSongsAtom, newUploaded)
+  idb.set('UPLOADED_SONGS', newUploaded)
 }

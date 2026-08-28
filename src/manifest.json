@@ -1,11 +1,65 @@
 [
   {
-    "file": "music/songs/fur-elise.mid",
-    "title": "Fur Elise - Ludwig van Beethoven",
-    "source": "builtin",
     "id": "fur-elise.mid",
+    "file": "music/songs/fur-elise.mid",
+    "title": "Für Elise - Ludwig van Beethoven",
+    "source": "builtin",
+    "difficulty": 3,
     "duration": 148,
-    "url": "https://musescore.com/user/94627/scores/111107",
-    "license": "https://creativecommons.org/licenses/by/4.0/"
+    "tags": ["Classical", "Beginner friendly", "Beethoven"]
+  },
+  {
+    "id": "happy-birthday.mid",
+    "file": "music/songs/happy-birthday.mid",
+    "title": "Happy Birthday - Traditional",
+    "source": "builtin",
+    "difficulty": 1,
+    "duration": 15,
+    "tags": ["Traditional", "Beginner friendly", "Celebration"]
+  },
+  {
+    "id": "twinkle-twinkle-little-star.mid",
+    "file": "music/songs/twinkle-twinkle-little-star.mid",
+    "title": "Twinkle Twinkle Little Star - Traditional",
+    "source": "builtin",
+    "difficulty": 1,
+    "duration": 30,
+    "tags": ["Traditional", "Beginner friendly", "Nursery"]
+  },
+  {
+    "id": "hallelujah.mid",
+    "file": "music/songs/hallelujah.mid",
+    "title": "Hallelujah - Leonard Cohen",
+    "source": "builtin",
+    "difficulty": 2,
+    "duration": 188,
+    "tags": ["Pop", "Ballad", "Emotional"]
+  },
+  {
+    "id": "minuet-in-g.mid",
+    "file": "music/songs/minuet-in-g.mid",
+    "title": "Minuet in G - Christian Petzold",
+    "source": "builtin",
+    "difficulty": 2,
+    "duration": 25,
+    "tags": ["Classical", "Baroque", "Bach"]
+  },
+  {
+    "id": "i-follow-rivers.mid",
+    "file": "music/songs/i-follow-rivers.mid",
+    "title": "I Follow Rivers - Lykke Li",
+    "source": "builtin",
+    "difficulty": 2,
+    "duration": 94,
+    "tags": ["Pop", "Indie", "Rhythm"]
+  },
+  {
+    "id": "lamour-toujours.mid",
+    "file": "music/songs/lamour-toujours.mid",
+    "title": "L'Amour Toujours - Gigi D'Agostino",
+    "source": "builtin",
+    "difficulty": 3,
+    "duration": 127,
+    "tags": ["Electronic", "Dance", "Upbeat"]
   }
 ]

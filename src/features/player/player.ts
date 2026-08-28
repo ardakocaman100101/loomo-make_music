@@ -127,7 +127,7 @@ export class Player {
   progressiveMode = atom(false)
   completedTracks = atom<Set<number>>(new Set<number>())
 
-  perfectRange = 50
+  perfectRange = 60
   goodRange = 300
 
   constructor(store: JotaiStore) {

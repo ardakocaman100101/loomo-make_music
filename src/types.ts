@@ -19,6 +19,8 @@ export type SongMetadata = {
   difficulty: number
   duration: number
   source: SongSource
+  tags?: string[]
+  artist?: string
   url?: string
   license?: string
   handle?: FileSystemFileHandle

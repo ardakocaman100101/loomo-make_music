@@ -51,6 +51,13 @@ interface TrackInfo {
 }
 
 function getSongGenre(song: SongMetadata): string {
+  if (song.tags && song.tags.length > 0) {
+    if (song.tags.includes('Electronic')) return 'Electronic'
+    if (song.tags.includes('Pop')) return 'Pop'
+    if (song.tags.includes('Jazz')) return 'Jazz'
+    if (song.tags.includes('Classical') || song.tags.includes('Traditional')) return 'Classical'
+    if (song.tags.includes('Chiptune')) return 'Chiptune'
+  }
   const t = (song.title || '').toLowerCase()
   if (t.includes('chiptune') || t.includes('8-bit') || t.includes('mario') || t.includes('zelda') || t.includes('tetris')) {
     return 'Chiptune'
@@ -58,13 +65,13 @@ function getSongGenre(song: SongMetadata): string {
   if (t.includes('jazz') || t.includes('swing') || t.includes('blues')) {
     return 'Jazz'
   }
-  if (t.includes('electronic') || t.includes('synth') || t.includes('dance') || t.includes('techno')) {
+  if (t.includes('electronic') || t.includes('synth') || t.includes('dance') || t.includes('techno') || t.includes('toujours')) {
     return 'Electronic'
   }
-  if (t.includes('pop') || t.includes('rock')) {
+  if (t.includes('pop') || t.includes('rock') || t.includes('hallelujah') || t.includes('rivers')) {
     return 'Pop'
   }
-  if (t.includes('beethoven') || t.includes('bach') || t.includes('mozart') || t.includes('chopin') || t.includes('elise') || t.includes('sonata') || t.includes('canon') || t.includes('waltz')) {
+  if (t.includes('beethoven') || t.includes('bach') || t.includes('mozart') || t.includes('chopin') || t.includes('elise') || t.includes('sonata') || t.includes('canon') || t.includes('waltz') || t.includes('minuet') || t.includes('petzold') || t.includes('birthday') || t.includes('twinkle')) {
     return 'Classical'
   }
   if (t.includes('cover')) {
@@ -222,7 +229,8 @@ export default function LibraryPage() {
   const filteredSongs = useMemo(() => {
     return rawSongs.filter((song) => {
       const customTitle = customTitles[song.id]
-      const songTags = (customTagsMap[song.id] || []).map((t) => t.toLowerCase())
+      const effectiveTags = customTagsMap[song.id] || song.tags || []
+      const songTags = effectiveTags.map((t) => t.toLowerCase())
       const { title, artist, genre } = getSongDetails(song, customTitle)
       const q = search.trim().toLowerCase()
 
@@ -515,12 +523,12 @@ export default function LibraryPage() {
                       {/* Middle & Right: Song Tags / Genre Badges, Duration & Actions */}
                       <div className="flex items-center gap-4 sm:gap-6 shrink-0 justify-between sm:justify-end">
                         {/* Attached Song Tags or Fallback Genre Tag Pill */}
-                        {(customTagsMap[song.id] || []).length > 0 ? (
-                          <div className="flex flex-wrap items-center gap-1.5 max-w-[220px]">
-                            {(customTagsMap[song.id] || []).map((tag) => (
+                        {(customTagsMap[song.id] || song.tags || []).length > 0 ? (
+                          <div className="flex flex-wrap items-center justify-end gap-1.5">
+                            {(customTagsMap[song.id] || song.tags || []).map((tag) => (
                               <span
                                 key={tag}
-                                className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold tracking-wide truncate max-w-[130px] ${
+                                className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold tracking-wide whitespace-nowrap ${
                                   isDarkMode
                                     ? 'border-[#AE8DFC]/30 bg-[#AE8DFC]/10 text-[#AE8DFC]'
                                     : 'border-[#8C49F4]/30 bg-[#8C49F4]/10 text-[#8C49F4]'

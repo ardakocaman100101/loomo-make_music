@@ -346,6 +346,29 @@ export default function Studio() {
   const [customTagInput, setCustomTagInput] = useState('')
 
   const [isSavedToLibrary, setIsSavedToLibrary] = useState<boolean>(Boolean(id))
+  const [showEffectsPopover, setShowEffectsPopover] = useState(false)
+  const effectsPopoverRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!showEffectsPopover) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (effectsPopoverRef.current && !effectsPopoverRef.current.contains(e.target as Node)) {
+        setShowEffectsPopover(false)
+      }
+    }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowEffectsPopover(false)
+      }
+    }
+    window.addEventListener('mousedown', handleClickOutside)
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('mousedown', handleClickOutside)
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [showEffectsPopover])
+
   const savedSnapshotRef = useRef<string>('')
   const playbackTimeRef = useRef<number>(0)
   const playbackIntervalRef = useRef<number | null>(null)
@@ -1755,206 +1778,248 @@ export default function Studio() {
       }}
       className="bg-[#131313] font-sans text-[#e5e2e1] select-none"
     >
-      {/* Studio Header (Fully Adaptive DAW Layout) */}
-      <header className="z-30 flex h-auto min-h-[140px] w-full shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[#353534]/50 bg-[#131313] px-4 py-2.5 shadow-md">
-        {/* 1. Left Zone: Enlarged Track Identity ON TOP, Media Player DIRECTLY UNDERNEATH */}
-        <div className="flex min-w-[280px] shrink-0 items-center">
-          <div className="flex h-32 w-full flex-col justify-between py-0.5">
-            {/* Top Row: Enlarged Back Button, loomo Logo & Track Name */}
-            <div className="flex items-center gap-3">
+      {/* Studio Header (3-Zone DAW Layout: Brand & Track Left, Media Player Center, Actions Right) */}
+      <header className="z-30 flex h-[105px] w-full shrink-0 flex-nowrap items-center justify-between gap-4 border-b border-[#353534]/50 bg-[#131313] px-5 py-2 shadow-md select-none overflow-visible">
+        {/* 1. Left Zone: Brand ON TOP, Song Title ONE LINE BELOW */}
+        <div className="flex min-w-[240px] max-w-[320px] shrink-0 flex-col justify-center gap-1.5 py-1">
+          {/* Top Row: Back Button & loomou Logo + Wordmark */}
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={() => {
+                stopPlayback()
+                navigate(-1)
+              }}
+              className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-2.5 py-1 text-xs font-bold text-[#9ba4ff] shadow-sm transition-all hover:bg-white/10 active:scale-95"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span>Back</span>
+            </button>
+
+            <div className="h-3.5 w-[1px] shrink-0 bg-[#353534]" />
+
+            <Link
+              to="/"
+              onClick={() => stopPlayback()}
+              className="group flex shrink-0 items-center gap-1.5"
+            >
+              <Logo
+                height={32}
+                width={52}
+                className="h-7 w-auto aspect-[5/3] drop-shadow-[0_0_15px_rgba(108,121,240,0.55)] transition-transform duration-200 group-hover:scale-105"
+              />
+              <span className="cursor-pointer text-xl font-black tracking-tight text-white transition-all group-hover:text-[#9ba4ff]">
+                loomou
+              </span>
+            </Link>
+          </div>
+
+          {/* Bottom Row (One Line Below): Song Title Input */}
+          <div className="flex items-center gap-2 pl-0.5">
+            <input
+              type="text"
+              value={songName}
+              onChange={(e) => setSongName(e.target.value)}
+              placeholder="Untitled Song"
+              className="max-w-[260px] min-w-[120px] flex-1 truncate bg-transparent text-base font-black tracking-tight text-white transition-all focus:border-b-2 focus:border-[#9ba4ff] focus:outline-none"
+              style={{
+                width: `${Math.max(10, songName.length + 1)}ch`,
+              }}
+            />
+          </div>
+        </div>
+
+        {/* 2. Middle Zone: Media Player Transport Controls Centered in the Header */}
+        <div className="flex flex-1 items-center justify-center">
+          <div className="flex items-center gap-2.5 rounded-2xl border border-white/10 bg-white/5 px-3.5 py-2 shadow-md backdrop-blur-md">
+            <div className="flex shrink-0 items-center gap-1.5">
               <button
-                onClick={() => {
-                  stopPlayback()
-                  navigate(-1)
-                }}
-                className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-bold text-[#9ba4ff] shadow-sm transition-all hover:bg-white/10 active:scale-95"
+                onClick={() => seekTo(0)}
+                title="Skip to Beginning"
+                className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-xl bg-white/5 text-white/80 transition-all hover:bg-white/10 hover:text-white"
               >
-                <ArrowLeft className="h-4 w-4" />
-                <span>Back</span>
+                <SkipBack className="h-4 w-4" />
               </button>
-
-              <div className="h-4 w-[1px] shrink-0 bg-[#353534]" />
-
-              <div className="flex min-w-0 items-center gap-2.5">
-                <Link
-                  to="/"
-                  onClick={() => stopPlayback()}
-                  className="group mr-1 flex shrink-0 items-center gap-1"
-                >
-                  <Logo
-                    height={50}
-                    width={84}
-                    className="h-[50px] w-auto aspect-[5/3] drop-shadow-[0_0_22px_rgba(108,121,240,0.55)]"
-                  />
-                  <span className="cursor-pointer text-2xl font-black tracking-tight text-white transition-all group-hover:text-[#9ba4ff]">
-                    loomou
-                  </span>
-                </Link>
-                <span className="shrink-0 text-xl font-light text-white/30">/</span>
-                <input
-                  type="text"
-                  value={songName}
-                  onChange={(e) => setSongName(e.target.value)}
-                  className="max-w-[220px] min-w-[100px] flex-1 bg-transparent text-xl font-black tracking-tight text-white transition-all focus:border-b-2 focus:border-[#9ba4ff] focus:outline-none"
-                  style={{
-                    width: `${Math.max(8, songName.length + 1)}ch`,
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Bottom Row: Media Player Transport Controls (Adaptive Layout) */}
-            <div className="flex w-fit max-w-full items-center gap-2.5 rounded-2xl border border-white/10 bg-white/5 px-3 py-1.5 shadow-md backdrop-blur-md">
-              <div className="flex shrink-0 items-center gap-1.5">
-                <button
-                  onClick={() => seekTo(0)}
-                  title="Skip to Beginning"
-                  className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-xl bg-white/5 text-white/80 transition-all hover:bg-white/10 hover:text-white"
-                >
-                  <SkipBack className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={togglePlayback}
-                  className={`flex h-8 w-8 cursor-pointer items-center justify-center rounded-xl transition-all ${
-                    isPlaying
-                      ? 'bg-[#9ba4ff] text-[#131313]'
-                      : 'bg-white/5 text-white hover:bg-white/10'
-                  }`}
-                >
-                  {isPlaying ? (
-                    <Pause className="h-4 w-4 fill-current" />
-                  ) : (
-                    <Play className="ml-0.5 h-4 w-4 fill-current" />
-                  )}
-                </button>
-                <button
-                  onClick={stopPlayback}
-                  className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-xl bg-white/5 text-white/80 transition-all hover:bg-white/10 hover:text-white"
-                >
-                  <Square className="h-4 w-4 fill-current" />
-                </button>
-                <button
-                  onClick={() => seekTo(totalDuration)}
-                  title="Skip to End"
-                  className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-xl bg-white/5 text-white/80 transition-all hover:bg-white/10 hover:text-white"
-                >
-                  <SkipForward className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => setIsLooping(!isLooping)}
-                  title="Toggle Loop"
-                  className={`flex h-8 w-8 cursor-pointer items-center justify-center rounded-xl transition-all ${
-                    isLooping
-                      ? 'bg-[#9ba4ff]/20 text-[#9ba4ff]'
-                      : 'bg-white/5 text-white/80 hover:bg-white/10'
-                  }`}
-                >
-                  <Repeat className="h-4 w-4" />
-                </button>
-              </div>
-
-              <div className="h-4 w-[1px] shrink-0 bg-white/15" />
-
-              <div className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-white">
-                <span className="font-semibold text-white/70">BPM:</span>
-                <input
-                  type="number"
-                  value={bpm}
-                  min={40}
-                  max={280}
-                  onChange={(e) => setBpm(Number(e.target.value))}
-                  className="w-12 rounded-lg border border-white/10 bg-white/5 py-0.5 text-center font-mono text-xs font-bold text-[#c0c7ff] focus:outline-none"
-                />
-              </div>
-
-              <div className="h-4 w-[1px] shrink-0 bg-white/15" />
-
-              <div className="shrink-0 font-mono text-xs font-bold text-[#c0c7ff] tabular-nums">
-                {(isPlaying || isDraggingPlayheadRef.current || hasManuallyMovedPlayheadRef.current
-                  ? playbackTime
-                  : (scrolledTime ?? playbackTime)
-                ).toFixed(2)}
-                s / {totalDuration}s
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 2. Center Section: Vertical Pitch Bend & Dynamically Resizing Visual EQ */}
-        <div className="my-auto flex min-w-[140px] max-w-[340px] flex-1 items-center gap-2.5">
-          {/* Pitch Bend Module */}
-          <div className="flex h-28 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-[#16161d] px-2 py-1.5 shadow-xl backdrop-blur-md">
-            <TouchPitchBend />
-          </div>
-
-          {/* Visual EQ Adapts Dynamically */}
-          <VisualEQ className="h-28 w-full min-w-0 flex-1" />
-        </div>
-
-        {/* 3. Center-Right & Right Section: Discrete Knobs & Faders Modules + Stacked Actions */}
-        <div className="flex shrink-0 items-center gap-2.5">
-          {/* Hardware Control Matrix (Separate Knobs & Faders Panels) */}
-          <StudioEffectsBar />
-
-          <div className="h-28 w-[1px] bg-[#353534]/60" />
-
-          {/* Action Buttons Block */}
-          <div className="flex items-center gap-2">
-            {/* Unified Block: Save Button ON TOP, Undo/Redo Pill DIRECTLY UNDERNEATH */}
-            <div className="flex w-22 flex-col justify-center gap-1.5">
-              {/* Primary File Management Button */}
               <button
-                onClick={handleSaveToLibrary}
-                className={`flex h-8.5 w-full items-center justify-center gap-1.5 rounded-xl border px-2 text-xs font-bold transition-all ${
-                  isFullySaved
-                    ? 'cursor-default border-white/15 bg-white/5 font-semibold text-white/50'
-                    : 'cursor-pointer border-emerald-400 bg-emerald-600 font-bold text-white shadow-[0_0_16px_rgba(16,185,129,0.45)] active:scale-95'
+                onClick={togglePlayback}
+                className={`flex h-8 w-8 cursor-pointer items-center justify-center rounded-xl transition-all ${
+                  isPlaying
+                    ? 'bg-[#9ba4ff] text-[#131313]'
+                    : 'bg-white/5 text-white hover:bg-white/10'
                 }`}
-                disabled={isFullySaved}
               >
-                <Save className={`h-4 w-4 ${isFullySaved ? 'text-white/40' : 'text-white'}`} />
-                <span>{isFullySaved ? 'Saved' : 'Save'}</span>
+                {isPlaying ? (
+                  <Pause className="h-4 w-4 fill-current" />
+                ) : (
+                  <Play className="ml-0.5 h-4 w-4 fill-current" />
+                )}
               </button>
-
-              {/* Secondary Timeline Action Pill */}
-              <div className="flex h-8 w-full items-center gap-0.5 rounded-xl border border-white/10 bg-white/5 p-0.5">
-                <button
-                  onClick={handleUndo}
-                  disabled={historyIndex <= 0}
-                  title="Undo"
-                  className="flex flex-1 cursor-pointer items-center justify-center rounded-lg py-1 text-white transition-colors hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-transparent"
-                >
-                  <Undo2 className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  onClick={handleRedo}
-                  disabled={historyIndex >= history.length - 1}
-                  title="Redo"
-                  className="flex flex-1 cursor-pointer items-center justify-center rounded-lg py-1 text-white transition-colors hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-transparent"
-                >
-                  <Redo2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
+              <button
+                onClick={stopPlayback}
+                className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-xl bg-white/5 text-white/80 transition-all hover:bg-white/10 hover:text-white"
+              >
+                <Square className="h-4 w-4 fill-current" />
+              </button>
+              <button
+                onClick={() => seekTo(totalDuration)}
+                title="Skip to End"
+                className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-xl bg-white/5 text-white/80 transition-all hover:bg-white/10 hover:text-white"
+              >
+                <SkipForward className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setIsLooping(!isLooping)}
+                title="Toggle Loop"
+                className={`flex h-8 w-8 cursor-pointer items-center justify-center rounded-xl transition-all ${
+                  isLooping
+                    ? 'bg-[#9ba4ff]/20 text-[#9ba4ff]'
+                    : 'bg-white/5 text-white/80 hover:bg-white/10'
+                }`}
+              >
+                <Repeat className="h-4 w-4" />
+              </button>
             </div>
 
-            {/* Export MIDI Button */}
+            <div className="h-4 w-[1px] shrink-0 bg-white/15" />
+
+            <div className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-white">
+              <span className="font-semibold text-white/70">BPM:</span>
+              <input
+                type="number"
+                value={bpm}
+                min={40}
+                max={280}
+                onChange={(e) => setBpm(Number(e.target.value))}
+                className="w-12 rounded-lg border border-white/10 bg-white/5 py-0.5 text-center font-mono text-xs font-bold text-[#c0c7ff] focus:outline-none"
+              />
+            </div>
+
+            <div className="h-4 w-[1px] shrink-0 bg-white/15" />
+
+            <div className="shrink-0 font-mono text-xs font-bold text-[#c0c7ff] tabular-nums">
+              {(isPlaying || isDraggingPlayheadRef.current || hasManuallyMovedPlayheadRef.current
+                ? playbackTime
+                : (scrolledTime ?? playbackTime)
+              ).toFixed(2)}
+              s / {totalDuration}s
+            </div>
+          </div>
+        </div>
+
+        {/* 3. Right Zone: Action Buttons (Effects Popover, Save/Undo, Export, Play) */}
+        <div className="flex shrink-0 items-center gap-2.5">
+          {/* Sound Effects Trigger Button */}
+          <div ref={effectsPopoverRef} className="relative flex">
             <button
-              onClick={handleDownloadMIDI}
-              className="flex h-[72px] cursor-pointer items-center justify-center gap-1 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs font-bold text-white shadow-sm transition-all hover:bg-white/10"
+              onClick={() => setShowEffectsPopover(!showEffectsPopover)}
+              className={`flex h-[72px] cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border px-3 py-2 text-xs font-bold transition-all ${
+                showEffectsPopover
+                  ? 'border-[#9ba4ff] bg-[#9ba4ff]/20 text-[#9ba4ff] shadow-[0_0_15px_rgba(155,164,255,0.3)]'
+                  : 'border-white/15 bg-white/5 text-white shadow-sm hover:bg-white/10 hover:border-white/25 active:scale-95'
+              }`}
+              title="Sound Effects, Pitch Bend & Master EQ"
             >
-              <Download className="h-4.5 w-4.5 text-[#cbc3d7]" />
-              <span>Export</span>
+              <SlidersHorizontal className="h-4.5 w-4.5 text-[#9ba4ff]" />
+              <span>Effects</span>
             </button>
 
-            {/* Play Button */}
-            <button
-              onClick={() => handleSaveAndPractice()}
-              className="flex h-[72px] cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-[#6c79f0] px-4 py-2 text-sm font-extrabold text-white shadow-[0_0_20px_rgba(108,121,240,0.5)] transition-all hover:bg-[#8591ff] active:scale-95"
-            >
-              <Play className="h-5 w-5 fill-current" />
-              <span>Play</span>
-            </button>
+            {/* Floating Glassmorphic Master Effects Popover */}
+            <AnimatePresence>
+              {showEffectsPopover && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.96 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute right-0 top-[80px] z-[120] flex w-[480px] max-w-[92vw] flex-col gap-3.5 rounded-2xl border border-white/15 bg-[#14141a]/95 p-4 shadow-[0_25px_60px_rgba(0,0,0,0.9)] backdrop-blur-2xl"
+                >
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <SlidersHorizontal className="h-4 w-4 text-[#9ba4ff]" />
+                      <span className="text-xs font-black tracking-wider text-white uppercase">
+                        Sound Effects & Master EQ
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setShowEffectsPopover(false)}
+                      className="cursor-pointer rounded-lg p-1 text-white/50 transition-colors hover:bg-white/10 hover:text-white"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  {/* Top Section: Pitch Bend & Visual EQ */}
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-28 w-18 shrink-0 flex-col items-center justify-center rounded-xl border border-white/10 bg-[#16161d] px-2 py-1.5 shadow-xl">
+                      <TouchPitchBend />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <VisualEQ className="h-28 w-full" />
+                    </div>
+                  </div>
+
+                  {/* Bottom Section: Knobs & Faders Matrix */}
+                  <div className="flex w-full items-center justify-center pt-0.5">
+                    <StudioEffectsBar />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
+
+          {/* Unified Block: Save Button ON TOP, Undo/Redo Pill DIRECTLY UNDERNEATH */}
+          <div className="flex w-22 flex-col justify-center gap-1.5">
+            {/* Primary File Management Button */}
+            <button
+              onClick={handleSaveToLibrary}
+              className={`flex h-8.5 w-full items-center justify-center gap-1.5 rounded-xl border px-2 text-xs font-bold transition-all ${
+                isFullySaved
+                  ? 'cursor-default border-white/15 bg-white/5 font-semibold text-white/50'
+                  : 'cursor-pointer border-emerald-400 bg-emerald-600 font-bold text-white shadow-[0_0_16px_rgba(16,185,129,0.45)] active:scale-95'
+              }`}
+              disabled={isFullySaved}
+            >
+              <Save className={`h-4 w-4 ${isFullySaved ? 'text-white/40' : 'text-white'}`} />
+              <span>{isFullySaved ? 'Saved' : 'Save'}</span>
+            </button>
+
+            {/* Secondary Timeline Action Pill */}
+            <div className="flex h-8 w-full items-center gap-0.5 rounded-xl border border-white/10 bg-white/5 p-0.5">
+              <button
+                onClick={handleUndo}
+                disabled={historyIndex <= 0}
+                title="Undo"
+                className="flex flex-1 cursor-pointer items-center justify-center rounded-lg py-1 text-white transition-colors hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-transparent"
+              >
+                <Undo2 className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={handleRedo}
+                disabled={historyIndex >= history.length - 1}
+                title="Redo"
+                className="flex flex-1 cursor-pointer items-center justify-center rounded-lg py-1 text-white transition-colors hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-transparent"
+              >
+                <Redo2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Export MIDI Button */}
+          <button
+            onClick={handleDownloadMIDI}
+            className="flex h-[72px] cursor-pointer items-center justify-center gap-1 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs font-bold text-white shadow-sm transition-all hover:bg-white/10 active:scale-95"
+          >
+            <Download className="h-4.5 w-4.5 text-[#cbc3d7]" />
+            <span>Export</span>
+          </button>
+
+          {/* Play Button */}
+          <button
+            onClick={() => handleSaveAndPractice()}
+            className="flex h-[72px] cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-[#6c79f0] px-4 py-2 text-sm font-extrabold text-white shadow-[0_0_20px_rgba(108,121,240,0.5)] transition-all hover:bg-[#8591ff] active:scale-95"
+          >
+            <Play className="h-5 w-5 fill-current" />
+            <span>Play</span>
+          </button>
         </div>
       </header>
 
@@ -2145,13 +2210,13 @@ export default function Studio() {
                     {songTags.map((tag) => (
                       <span
                         key={tag}
-                        className="inline-flex items-center gap-1 rounded-full border border-[#8C49F4] bg-[#8C49F4]/20 px-2.5 py-0.5 text-xs font-bold text-[#D3BCFD] shadow-[0_0_12px_rgba(140,73,244,0.35)] select-none"
+                        className="inline-flex items-center gap-1.5 rounded-full border border-[#8C49F4] bg-[#8C49F4]/20 px-2.5 py-0.5 text-xs font-bold text-[#D3BCFD] shadow-[0_0_12px_rgba(140,73,244,0.35)] select-none"
                       >
-                        <span className="truncate max-w-[150px]">{tag}</span>
+                        <span className="whitespace-normal">{tag}</span>
                         <button
                           type="button"
                           onClick={() => handleRemoveTag(tag)}
-                          className="cursor-pointer text-white/60 hover:text-white transition-colors"
+                          className="cursor-pointer text-white/60 hover:text-white transition-colors shrink-0"
                           title="Remove tag"
                         >
                           <X className="h-3 w-3" />

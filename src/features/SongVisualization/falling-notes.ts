@@ -135,7 +135,7 @@ function deriveState(givenState: GivenState): State {
   const bpmModifier = givenState.player.store.get(givenState.player.bpmModifier) || 1
   const effectiveBpm = currentBpm * bpmModifier
   const beatDurationMs = (60 / Math.max(20, effectiveBpm)) * 1000
-  const perfectRangeMs = Math.min(80, Math.max(35, beatDurationMs * 0.2))
+  const perfectRangeMs = Math.min(90, Math.max(40, beatDurationMs * 0.22))
   const goodRangeMs = Math.min(350, Math.max(120, beatDurationMs * 0.5))
 
   if (perfectRangeMs !== lastPerfectRangeMs || goodRangeMs !== lastGoodRangeMs) {
