@@ -1,0 +1,10 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "loomou",
+  "compatibility_date": "2026-08-26",
+  "assets": {
+    "directory": "./build/client",
+    "html_handling": "single-page-application",
+    "not_found_handling": "single-page-application"
+  }
+}
