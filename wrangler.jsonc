@@ -3,8 +3,7 @@
   "compatibility_date": "2026-08-28",
   "assets": {
     "directory": "./build/client",
-    "html_handling": "single-page-application", // 👈 Essential for Loomo
-    "not_found_handling": "single-page-application" // 👈 Prevents 404 on page refresh
+    "not_found_handling": "single-page-application"
   },
   "observability": {
     "enabled": true
