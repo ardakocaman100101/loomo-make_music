@@ -68,7 +68,6 @@ export default function Home() {
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#F6F7FB]/30 to-[#FFFFFF]" />
           )}
         </div>
-
         {/* 2. Hero Section */}
         <Hero isDarkMode={isDarkMode} />
 
