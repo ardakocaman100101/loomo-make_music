@@ -25,10 +25,8 @@ import { AnimatePresence, motion } from 'motion/react'
 import React, { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useTheme } from '@/hooks'
-import { FeaturedSongsPreview } from './FeaturedSongsPreview'
 
 export default function Home() {
-  const [isDemoOpen, setIsDemoOpen] = useState(false)
   const [isDarkMode, setIsDarkMode] = useTheme()
 
   return (
@@ -47,22 +45,22 @@ export default function Home() {
           {/* Top subtle radial light source reaching down through the hero and showcase */}
           <div
             className={`absolute top-0 left-1/2 w-full -translate-x-1/2 transition-all duration-700 ${isDarkMode
-                ? 'h-[750px] bg-[radial-gradient(ellipse_at_top,rgba(117,105,236,0.22)_0%,transparent_70%)]'
-                : 'h-[1150px] md:h-[1350px] bg-[radial-gradient(ellipse_at_top,rgba(110,97,234,0.42)_0%,rgba(139,128,249,0.22)_38%,rgba(175,166,255,0.1)_62%,transparent_85%)]'
+                ? 'h-[750px] bg-[radial-gradient(ellipse_at_top,rgba(110,97,234,0.18)_0%,transparent_70%)]'
+                : 'h-[1150px] md:h-[1350px] bg-[radial-gradient(ellipse_at_top,rgba(110,97,234,0.38)_0%,rgba(139,128,249,0.2)_38%,rgba(175,166,255,0.08)_62%,transparent_85%)]'
               }`}
           />
           {/* Main expanded indigo glow */}
           <div
             className={`absolute left-1/2 -translate-x-1/2 rounded-full transition-all duration-700 ${isDarkMode
-                ? 'top-[-90px] h-[900px] w-[1400px] bg-[#7569EC]/15 blur-[140px]'
-                : 'top-[-80px] h-[1200px] w-[1500px] bg-[#6E61EA]/28 blur-[160px]'
+                ? 'top-[-90px] h-[900px] w-[1400px] bg-[#7569EC]/12 blur-[140px]'
+                : 'top-[-80px] h-[1200px] w-[1500px] bg-[#6E61EA]/24 blur-[160px]'
               }`}
           />
           {/* Inner soft secondary vibrant glow */}
           <div
             className={`absolute left-1/2 -translate-x-1/2 rounded-full transition-all duration-700 ${isDarkMode
-                ? 'top-[30px] h-[550px] w-[900px] bg-[#9ba4ff]/10 blur-[110px]'
-                : 'top-[100px] h-[800px] w-[1100px] bg-[#8F84FB]/22 blur-[125px]'
+                ? 'top-[30px] h-[550px] w-[900px] bg-[#9ba4ff]/8 blur-[110px]'
+                : 'top-[100px] h-[800px] w-[1100px] bg-[#8F84FB]/18 blur-[125px]'
               }`}
           />
           {/* Light mode smooth base transition to pure white */}
@@ -75,7 +73,7 @@ export default function Home() {
         <Hero isDarkMode={isDarkMode} />
 
         {/* 3. Hero App Showcase Card */}
-        <HeroShowcase isDarkMode={isDarkMode} onOpenDemo={() => setIsDemoOpen(true)} />
+        <HeroShowcase isDarkMode={isDarkMode} />
 
         {/* 4. Interactive Feature Carousel */}
         <FeatureCarousel isDarkMode={isDarkMode} />
@@ -83,13 +81,6 @@ export default function Home() {
 
       {/* 5. Mobile / Tablet Responsive Navigation Bar (Appears earlier on < 1100px screens) */}
       <MobileNav isDarkMode={isDarkMode} />
-
-      {/* 6. Interactive Demo Video / Preview Modal */}
-      <DemoVideoModal
-        isDarkMode={isDarkMode}
-        isOpen={isDemoOpen}
-        onClose={() => setIsDemoOpen(false)}
-      />
     </div>
   )
 }
@@ -342,10 +333,8 @@ function Hero({ isDarkMode }: { isDarkMode: boolean }) {
 
 function HeroShowcase({
   isDarkMode,
-  onOpenDemo,
 }: {
   isDarkMode: boolean
-  onOpenDemo: () => void
 }) {
   return (
     <section className="relative z-10 mx-auto mt-22 w-full max-w-5xl md:mt-26">
@@ -355,42 +344,23 @@ function HeroShowcase({
             : 'border-[#24273A]/[0.08] bg-white/85 backdrop-blur-2xl shadow-[0_30px_80px_-15px_rgba(36,39,58,0.08),0_1px_3px_rgba(36,39,58,0.04)]'
           }`}
       >
-        {/* Background Image / Waterfall Canvas Preview */}
-        <img
-          src="/assets/home/hero-demo-preview.png"
-          alt="loomou piano waterfall demo"
-          className="h-full w-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
-          onError={(e) => {
-            ; (e.target as HTMLImageElement).src = '/images/mode_falling_notes_screenshot.png'
-          }}
-        />
-
-        {/* Ambient Dark/Light Gradient Overlays */}
-        <div
-          className={`absolute inset-0 transition-colors ${isDarkMode
-              ? 'bg-gradient-to-t from-[#101223] via-[#101223]/35 to-[#101223]/20'
-              : 'bg-gradient-to-t from-[#F6F7FB] via-[#F6F7FB]/40 to-transparent'
-            }`}
-        />
-        <div
-          className={`absolute inset-0 ${isDarkMode
-              ? 'bg-radial from-transparent via-[#101223]/25 to-[#101223]/80'
-              : 'bg-radial from-transparent via-[#F6F7FB]/20 to-[#F6F7FB]/50'
-            }`}
-        />
-
-        {/* Centered Circular Play Button */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <button
-            onClick={onOpenDemo}
-            className="group/btn relative flex h-20 w-20 cursor-pointer items-center justify-center rounded-full bg-gradient-to-tr from-[#6E61EA] to-[#7B6EF6] text-white shadow-[0_12px_45px_rgba(110,97,234,0.55),inset_0_1px_1px_rgba(255,255,255,0.4)] transition-all duration-300 hover:scale-110 hover:shadow-[0_16px_55px_rgba(110,97,234,0.75)] active:scale-95 md:h-24 md:w-24"
-            title="Play Demo Video"
-          >
-            {/* Animated Pulsing Ring */}
-            <span className="absolute inset-0 -z-10 animate-ping rounded-full bg-[#6E61EA]/35 duration-1000" />
-            <Play className="ml-1 h-8 w-8 fill-current text-white md:h-10 md:w-10" />
-          </button>
-        </div>
+        {/* Auto-Playing Video (Plays continuously like a GIF) */}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          poster="/assets/home/hero-demo-poster.png"
+          className="h-full w-full object-cover object-center"
+        >
+          <source src="/assets/home/hero-demo-video.mp4" type="video/mp4" />
+          <source src="/assets/home/hero-demo-video.webm" type="video/webm" />
+          <img
+            src="/assets/home/hero-demo-poster.png"
+            alt="loomou piano waterfall demo"
+            className="h-full w-full object-cover object-center"
+          />
+        </video>
       </div>
     </section>
   )
@@ -643,79 +613,6 @@ function FeatureCarousel({ isDarkMode }: { isDarkMode: boolean }) {
   )
 }
 
-/* =========================================================================
-   5. Interactive Demo Video Modal (Theme Adaptive)
-   ========================================================================= */
-
-function DemoVideoModal({
-  isDarkMode,
-  isOpen,
-  onClose,
-}: {
-  isDarkMode: boolean
-  isOpen: boolean
-  onClose: () => void
-}) {
-  if (!isOpen) return null
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-lg animate-in fade-in duration-200">
-      <div
-        className={`relative flex w-full max-w-4xl flex-col items-center rounded-[32px] p-4 shadow-[0_30px_90px_rgba(0,0,0,0.8)] transition-colors sm:p-6 ${isDarkMode
-            ? 'border border-white/[0.12] bg-[#101223] text-[#F4F5F8]'
-            : 'border border-[#24273A]/[0.08] bg-white/95 text-[#24273A]'
-          }`}
-      >
-        <button
-          onClick={onClose}
-          className={`absolute top-4 right-4 z-10 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full transition hover:bg-[#6E61EA] hover:text-white ${isDarkMode ? 'bg-[#202333] text-[#A2A3B1]' : 'bg-[#EEF1FA] text-[#696E87]'
-            }`}
-        >
-          <X size={18} />
-        </button>
-
-        <div
-          className={`mb-4 flex w-full items-center justify-between border-b pb-3 ${isDarkMode ? 'border-white/[0.08]' : 'border-[#24273A]/[0.08]'
-            }`}
-        >
-          <div className="flex items-center gap-2">
-            <Play className="h-5 w-5 text-[#6E61EA]" />
-            <h3
-              className={`font-['Space_Grotesk',sans-serif] text-lg font-bold ${isDarkMode ? 'text-[#F4F5F8]' : 'text-[#24273A]'
-                }`}
-            >
-              loomou piano showcase & interactive preview
-            </h3>
-          </div>
-        </div>
-
-        {/* Embedded Interactive Song Visualizer Demo */}
-        <div
-          className={`relative aspect-[16/9] w-full overflow-hidden rounded-2xl border ${isDarkMode
-              ? 'border-white/[0.08] bg-[#1A1D2D]'
-              : 'border-[#24273A]/[0.08] bg-[#F6F7FB]'
-            }`}
-        >
-          <FeaturedSongsPreview marginTop={0} />
-        </div>
-
-        <div
-          className={`mt-4 flex w-full items-center justify-between text-xs ${isDarkMode ? 'text-[#A2A3B1]' : 'text-[#696E87]'
-            }`}
-        >
-          <span>Use Spacebar to Play / Pause demo playback</span>
-          <Link
-            to="/freeplay"
-            className="font-bold text-[#6E61EA] hover:underline"
-            onClick={onClose}
-          >
-            Launch Fullscreen Practice →
-          </Link>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 /* =========================================================================
    6. Mobile / Tablet Navigation (Theme Adaptive)

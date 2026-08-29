@@ -40,6 +40,7 @@
     "@tonejs/midi": "2.0.28",
     "@types/pg": "^8.21.0",
     "clsx": "2.1.1",
+    "code": "^5.2.4",
     "idb-keyval": "6.2.2",
     "isbot": "5",
     "jotai": "2.13.1",

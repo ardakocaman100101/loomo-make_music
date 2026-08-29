@@ -6,6 +6,12 @@
       "env": {
         "DATABASE_URL": "postgres://loomo:loomo_dev_password@localhost:5432/loomo_db"
       }
+    },
+    "cloudflare": {
+      "serverUrl": "https://api.mcp.cloudflare.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${CLOUDFLARE_API_TOKEN}"
+      }
     }
   }
 }
