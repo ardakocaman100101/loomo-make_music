@@ -69,8 +69,9 @@ function deriveState(givenState: GivenState): State {
       startNote = range.start
       endNote = range.end
     } else {
-      startNote = 21
-      endNote = 108
+      // Automatic 3 octaves (C3 to C6: MIDI 48 to 84) when no MIDI device is connected
+      startNote = 48
+      endNote = 84
     }
     midiState.midiOctaveDiff = 0
   } else {

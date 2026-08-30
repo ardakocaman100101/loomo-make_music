@@ -9,7 +9,7 @@ import { isAudioContextEnabled } from './utils'
 export class TrackAudioEngine {
   private synths: Map<number, Synth> = new Map()
   private trackConfigs: Record<number, TrackSetting> = {}
-  private masterVolume = 1.0
+  private masterVolume = 0.3
   private keyboardVolume = 1.0
 
   public ensureAudioContextRunning() {

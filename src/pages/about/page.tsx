@@ -346,20 +346,6 @@ function Navbar({
           </Link>
 
           <Link
-            to="/freeplay"
-            className={`flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-bold transition-all sm:gap-2.5 sm:px-5 sm:py-2.5 sm:text-base ${
-              isDarkMode
-                ? 'text-[#A2A3B1] hover:bg-[#202333] hover:text-[#F4F5F8]'
-                : 'text-[#696E87] hover:bg-white/70 hover:text-[#24273A]'
-            }`}
-          >
-            <Piano className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
-            <span>Practice</span>
-          </Link>
-
-          <div className={`mx-0.5 h-4 w-px sm:mx-1 sm:h-5 ${isDarkMode ? 'bg-white/10' : 'bg-[#24273A]/10'}`} />
-
-          <Link
             to="/songs"
             className={`flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-bold transition-all sm:gap-2.5 sm:px-5 sm:py-2.5 sm:text-base ${
               isDarkMode
@@ -369,6 +355,20 @@ function Navbar({
           >
             <Library className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
             <span>Library</span>
+          </Link>
+
+          <div className={`mx-0.5 h-4 w-px sm:mx-1 sm:h-5 ${isDarkMode ? 'bg-white/10' : 'bg-[#24273A]/10'}`} />
+
+          <Link
+            to="/freeplay"
+            className={`flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-bold transition-all sm:gap-2.5 sm:px-5 sm:py-2.5 sm:text-base ${
+              isDarkMode
+                ? 'text-[#A2A3B1] hover:bg-[#202333] hover:text-[#F4F5F8]'
+                : 'text-[#696E87] hover:bg-white/70 hover:text-[#24273A]'
+            }`}
+          >
+            <Piano className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
+            <span>Practice</span>
           </Link>
 
           {/* About Active Pill */}
@@ -443,15 +443,15 @@ function MobileNav({ isDarkMode }: { isDarkMode: boolean }) {
         isDarkMode={isDarkMode}
       />
       <MobileNavItem
-        icon={<Piano className="h-5 w-5" />}
-        label="Practice"
-        href="/freeplay"
-        isDarkMode={isDarkMode}
-      />
-      <MobileNavItem
         icon={<Library className="h-5 w-5" />}
         label="Library"
         href="/songs"
+        isDarkMode={isDarkMode}
+      />
+      <MobileNavItem
+        icon={<Piano className="h-5 w-5" />}
+        label="Practice"
+        href="/freeplay"
         isDarkMode={isDarkMode}
       />
       <MobileNavItem

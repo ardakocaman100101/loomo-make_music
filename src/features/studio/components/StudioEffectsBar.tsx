@@ -5,6 +5,7 @@ import { TouchPitchBend } from './TouchPitchBend'
 import { VerticalFader } from './VerticalFader'
 import { VisualEQ } from './VisualEQ'
 
+export { StudioTouchPanel } from './StudioTouchPanel'
 export { TouchPitchBend, VisualEQ }
 
 export const HardwareControlMatrix: React.FC = () => {

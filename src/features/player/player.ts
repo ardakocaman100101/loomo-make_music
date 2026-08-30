@@ -84,8 +84,10 @@ export class Player {
   playInterval: any = null
   trackConfigs: { [id: number]: TrackSetting } = {}
   currentSongTime = 0
-  volume = atom(1)
+  volume = atom(0.3)
   instrumentVolume = atom(1)
+  lastNonZeroVolume = 0.3
+  lastNonZeroInstrumentVolume = 1
   songLoop = atom(false)
 
   // TODO: Determine if MIDI always assumes BPM means quarter notes per minute.
@@ -132,6 +134,7 @@ export class Player {
 
   constructor(store: JotaiStore) {
     this.store = store
+    trackAudioEngine.setMasterVolume(0.3)
     midi.subscribe((midiEvent) => this.processMidiEvent(midiEvent))
   }
 
@@ -379,6 +382,9 @@ export class Player {
   }
 
   setVolume(vol: number) {
+    if (vol > 0) {
+      this.lastNonZeroVolume = vol
+    }
     this.store.set(this.volume, vol)
     trackAudioEngine.setMasterVolume(vol)
     const backingTrack = this.getSong()?.backing
@@ -388,8 +394,23 @@ export class Player {
   }
 
   setInstrumentVolume(vol: number) {
+    if (vol > 0) {
+      this.lastNonZeroInstrumentVolume = vol
+    }
     this.store.set(this.instrumentVolume, vol)
     trackAudioEngine.setKeyboardVolume(vol)
+  }
+
+  toggleMute() {
+    const currentVol = this.store.get(this.volume)
+    const currentInstVol = this.store.get(this.instrumentVolume)
+    if (currentVol === 0 && currentInstVol === 0) {
+      this.setVolume(this.lastNonZeroVolume || 0.3)
+      this.setInstrumentVolume(this.lastNonZeroInstrumentVolume || 1)
+    } else {
+      this.setVolume(0)
+      this.setInstrumentVolume(0)
+    }
   }
 
   setTrackVolume(track: number | string, vol: number) {
@@ -584,7 +605,7 @@ export class Player {
 
     const backingTrack = this.getSong()?.backing
     if (backingTrack) {
-      backingTrack.volume = 0.15
+      backingTrack.volume = 0.15 * this.store.get(this.volume)
       backingTrack.play()
     }
     this.store.set(this.state, 'Playing')
@@ -596,8 +617,7 @@ export class Player {
   }
 
   playNote(note: SongNote) {
-    const guideVol = this.store.get(this.volume)
-    trackAudioEngine.playTrackNote(note.track, note.midiNote, (note.velocity ?? 80) * guideVol)
+    trackAudioEngine.playTrackNote(note.track, note.midiNote, note.velocity ?? 80)
   }
 
   playUserNote(midiNote: number, velocity = 127 / 2) {

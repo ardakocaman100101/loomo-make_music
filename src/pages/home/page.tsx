@@ -142,20 +142,6 @@ function Navbar({
           </Link>
 
           <Link
-            to="/freeplay"
-            className={`flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-bold transition-all sm:gap-2.5 sm:px-5 sm:py-2.5 sm:text-base ${isDarkMode
-                ? 'text-[#A2A3B1] hover:bg-[#202333] hover:text-[#F4F5F8]'
-                : 'text-[#696E87] hover:bg-white/70 hover:text-[#24273A]'
-              }`}
-          >
-            <Piano className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
-            <span>Practice</span>
-          </Link>
-
-          {/* Subtle separator */}
-          <div className={`mx-0.5 h-4 w-px sm:mx-1 sm:h-5 ${isDarkMode ? 'bg-white/10' : 'bg-[#24273A]/10'}`} />
-
-          <Link
             to="/songs"
             className={`flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-bold transition-all sm:gap-2.5 sm:px-5 sm:py-2.5 sm:text-base ${isDarkMode
                 ? 'text-[#A2A3B1] hover:bg-[#202333] hover:text-[#F4F5F8]'
@@ -164,6 +150,20 @@ function Navbar({
           >
             <Library className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
             <span>Library</span>
+          </Link>
+
+          {/* Subtle separator */}
+          <div className={`mx-0.5 h-4 w-px sm:mx-1 sm:h-5 ${isDarkMode ? 'bg-white/10' : 'bg-[#24273A]/10'}`} />
+
+          <Link
+            to="/freeplay"
+            className={`flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-bold transition-all sm:gap-2.5 sm:px-5 sm:py-2.5 sm:text-base ${isDarkMode
+                ? 'text-[#A2A3B1] hover:bg-[#202333] hover:text-[#F4F5F8]'
+                : 'text-[#696E87] hover:bg-white/70 hover:text-[#24273A]'
+              }`}
+          >
+            <Piano className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
+            <span>Practice</span>
           </Link>
 
           <Link
@@ -336,14 +336,14 @@ function HeroShowcase({
   isDarkMode: boolean
 }) {
   return (
-    <section className="relative z-10 mx-auto mt-22 w-full max-w-5xl md:mt-26">
+    <section className="relative z-10 mx-auto mt-20 w-full max-w-5xl md:mt-24">
       <div
-        className={`group relative aspect-[16/9] w-full overflow-hidden rounded-[32px] border transition-all md:aspect-[21/9] ${isDarkMode
+        className={`group relative aspect-[1744/966] w-full overflow-hidden rounded-[32px] border transition-all ${
+          isDarkMode
             ? 'border-white/[0.08] bg-[#1A1D2D] shadow-[0_25px_70px_rgba(0,0,0,0.6)]'
             : 'border-[#24273A]/[0.08] bg-white/85 backdrop-blur-2xl shadow-[0_30px_80px_-15px_rgba(36,39,58,0.08),0_1px_3px_rgba(36,39,58,0.04)]'
-          }`}
+        }`}
       >
-        {/* Auto-Playing Video (Plays continuously like a GIF) */}
         <video
           autoPlay
           loop
@@ -633,15 +633,15 @@ function MobileNav({ isDarkMode }: { isDarkMode: boolean }) {
         isDarkMode={isDarkMode}
       />
       <MobileNavItem
-        icon={<Piano className="h-5 w-5" />}
-        label="Practice"
-        href="/freeplay"
-        isDarkMode={isDarkMode}
-      />
-      <MobileNavItem
         icon={<Library className="h-5 w-5" />}
         label="Library"
         href="/songs"
+        isDarkMode={isDarkMode}
+      />
+      <MobileNavItem
+        icon={<Piano className="h-5 w-5" />}
+        label="Practice"
+        href="/freeplay"
         isDarkMode={isDarkMode}
       />
       <MobileNavItem

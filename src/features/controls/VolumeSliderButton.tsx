@@ -10,13 +10,7 @@ export function VolumeSliderButton() {
 
   const isSoundOff = volume === 0 && instrumentVolume === 0
   const toggleVolume = () => {
-    if (isSoundOff) {
-      player.setVolume(1)
-      player.setInstrumentVolume(1)
-    } else {
-      player.setVolume(0)
-      player.setInstrumentVolume(0)
-    }
+    player.toggleMute()
   }
 
   return (
