@@ -134,6 +134,16 @@ export function useTouchpadNavigation({
     }
 
     const handleWheel = (e: WheelEvent) => {
+      // Ignore on studio page or studio scrollable containers to preserve 2D piano roll panning
+      if (
+        typeof window !== 'undefined' &&
+        (window.location.pathname.startsWith('/studio') ||
+          (e.target as HTMLElement | null)?.closest?.('[data-no-touchpad-nav]') ||
+          (e.target as HTMLElement | null)?.closest?.('.studio-viewport'))
+      ) {
+        return
+      }
+
       // Ignore pinch-to-zoom (ctrlKey) or vertical-dominant scroll
       if (e.ctrlKey || e.metaKey || e.altKey) return
 

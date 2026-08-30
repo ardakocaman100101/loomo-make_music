@@ -5,6 +5,7 @@ import { parseMidi } from '@/features/parsers'
 import * as persistence from '@/features/persist/persistence'
 import {
   StudioEffectsBar,
+  StudioTouchPanel,
   TouchPitchBend,
   VisualEQ,
 } from '@/features/studio/components/StudioEffectsBar'
@@ -27,6 +28,7 @@ import {
   Drum,
   FileMusic,
   Guitar,
+  Move,
   Music,
   Pause,
   Piano,
@@ -347,6 +349,7 @@ export default function Studio() {
 
   const [isSavedToLibrary, setIsSavedToLibrary] = useState<boolean>(Boolean(id))
   const [showEffectsPopover, setShowEffectsPopover] = useState(false)
+  const [showTouchPanel, setShowTouchPanel] = useState(false)
   const effectsPopoverRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -745,15 +748,56 @@ export default function Studio() {
   const { minMidi, maxMidi, whiteKeyNotes, blackKeyNotes } = studioMeasurements
 
   const handleWheel = (e: React.WheelEvent) => {
-    if (e.ctrlKey) {
+    if (e.ctrlKey || e.metaKey) {
       e.preventDefault()
       setZoomY((prev) => {
         const step = -e.deltaY * 0.05
         const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, prev + step))
         return newZoom
       })
+      return
+    }
+
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    // Shift + wheel scrolls horizontally
+    if (e.shiftKey) {
+      container.scrollLeft += e.deltaY + e.deltaX
+      if (pianoScrollRef.current) {
+        pianoScrollRef.current.scrollLeft = container.scrollLeft
+      }
+    } else if (e.currentTarget === pianoScrollRef.current) {
+      // Forward scroll when interacting directly with the bottom piano keys
+      container.scrollLeft += e.deltaX
+      container.scrollTop += e.deltaY
+      if (pianoScrollRef.current) {
+        pianoScrollRef.current.scrollLeft = container.scrollLeft
+      }
     }
   }
+
+  // One-click helper to center active notes in the viewport
+  const centerActiveNotes = useCallback(() => {
+    const el = scrollContainerRef.current
+    if (!el) return
+    if (notes.length > 0) {
+      const minNote = Math.min(...notes.map((n) => n.midiNote))
+      const maxNote = Math.max(...notes.map((n) => n.midiNote))
+      const targetMidi = Math.round((minNote + maxNote) / 2)
+      const lane = studioMeasurements.lanes[targetMidi]
+      const centerX = lane ? lane.noteLeft + lane.noteWidth / 2 : 400
+      const containerW = el.clientWidth || el.offsetWidth || 800
+      const hOffset = Math.max(0, centerX - containerW / 2)
+      el.scrollLeft = hOffset
+      if (pianoScrollRef.current) pianoScrollRef.current.scrollLeft = hOffset
+    } else {
+      const lane = studioMeasurements.lanes[60]
+      const hOffset = Math.max(0, (lane ? lane.left : 0) - 200)
+      el.scrollLeft = hOffset
+      if (pianoScrollRef.current) pianoScrollRef.current.scrollLeft = hOffset
+    }
+  }, [notes, studioMeasurements])
 
   // Sync piano horizontal scroll & update scrolledTime for Media Player readout during vertical scroll
   const handleGridScroll = useCallback(() => {
@@ -2336,6 +2380,22 @@ export default function Studio() {
               Timeline
             </span>
             <div className="flex items-center gap-3">
+              {/* Touch Panel Toggle Button */}
+              <button
+                onClick={() => setShowTouchPanel((prev) => !prev)}
+                className={`flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-bold transition-all ${
+                  showTouchPanel
+                    ? 'border-[#9ba4ff] bg-[#9ba4ff]/25 text-[#9ba4ff] shadow-[0_0_12px_rgba(155,164,255,0.3)]'
+                    : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'
+                }`}
+                title="Toggle 2D Touch Navigation Panel"
+              >
+                <Move className="h-3.5 w-3.5" />
+                <span>Touch Panel</span>
+              </button>
+
+              <div className="h-3.5 w-[1px] bg-white/10" />
+
               <span className="font-medium text-white/70">Zoom:</span>
               <div className="flex rounded-lg border border-white/10 bg-white/5 p-0.5">
                 {[32, 48, 64, 96].map((z) => (
@@ -2366,6 +2426,28 @@ export default function Studio() {
               overflow: 'hidden',
             }}
           >
+            {/* 2D Touchpad / Navigation Panel */}
+            <AnimatePresence>
+              {showTouchPanel && (
+                <StudioTouchPanel
+                  scrollContainerRef={scrollContainerRef}
+                  pianoScrollRef={pianoScrollRef}
+                  notes={notes}
+                  minMidi={minMidi}
+                  maxMidi={maxMidi}
+                  totalDuration={totalDuration}
+                  bpm={bpm}
+                  zoomY={zoomY}
+                  setZoomY={setZoomY}
+                  playbackTime={playbackTime}
+                  seekTo={seekTo}
+                  isOpen={showTouchPanel}
+                  onClose={() => setShowTouchPanel(false)}
+                  onCenterNotes={centerActiveNotes}
+                />
+              )}
+            </AnimatePresence>
+
             {/* Interactive Playhead line & time handle */}
             <div
               onMouseDown={handlePlayheadMouseDown}
@@ -2591,6 +2673,7 @@ export default function Studio() {
             style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: KEY_TOP_HEIGHT }}
             className="overflow-hidden border-t border-[#353534] bg-[#1a1a1e]"
             ref={pianoScrollRef}
+            onWheel={handleWheel}
           >
             <div
               className="relative"
