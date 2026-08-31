@@ -777,6 +777,154 @@ export default function Studio() {
     }
   }
 
+  // 2D Touch Screen Navigation (1-finger pan horizontally & vertically, 2-finger pinch zoom)
+  const touchPanRef = useRef<{
+    startX: number
+    startY: number
+    startScrollLeft: number
+    startScrollTop: number
+    isPanning: boolean
+    initialPinchDistance?: number
+    initialZoom?: number
+  } | null>(null)
+
+  const pianoTouchRef = useRef<{
+    startX: number
+    startY: number
+    startScrollLeft: number
+    startScrollTop: number
+    isPanning: boolean
+  } | null>(null)
+
+  const handleGridTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    if (e.touches.length === 1) {
+      const touch = e.touches[0]
+      touchPanRef.current = {
+        startX: touch.clientX,
+        startY: touch.clientY,
+        startScrollLeft: container.scrollLeft,
+        startScrollTop: container.scrollTop,
+        isPanning: false,
+      }
+    } else if (e.touches.length === 2) {
+      const t1 = e.touches[0]
+      const t2 = e.touches[1]
+      const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY)
+      const midX = (t1.clientX + t2.clientX) / 2
+      const midY = (t1.clientY + t2.clientY) / 2
+      touchPanRef.current = {
+        startX: midX,
+        startY: midY,
+        startScrollLeft: container.scrollLeft,
+        startScrollTop: container.scrollTop,
+        isPanning: true,
+        initialPinchDistance: dist,
+        initialZoom: zoomY,
+      }
+    }
+  }
+
+  const handleGridTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!touchPanRef.current) return
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    if (e.touches.length === 1) {
+      const touch = e.touches[0]
+      const deltaX = touch.clientX - touchPanRef.current.startX
+      const deltaY = touch.clientY - touchPanRef.current.startY
+
+      if (!touchPanRef.current.isPanning && Math.hypot(deltaX, deltaY) > 5) {
+        touchPanRef.current.isPanning = true
+        justFinishedDragRef.current = true
+      }
+
+      if (touchPanRef.current.isPanning) {
+        container.scrollLeft = touchPanRef.current.startScrollLeft - deltaX
+        container.scrollTop = touchPanRef.current.startScrollTop - deltaY
+        if (pianoScrollRef.current) {
+          pianoScrollRef.current.scrollLeft = container.scrollLeft
+        }
+      }
+    } else if (e.touches.length === 2 && touchPanRef.current.initialPinchDistance) {
+      const t1 = e.touches[0]
+      const t2 = e.touches[1]
+      const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY)
+      const ratio = dist / touchPanRef.current.initialPinchDistance
+      const newZoom = Math.min(
+        MAX_ZOOM,
+        Math.max(
+          MIN_ZOOM,
+          Math.round((touchPanRef.current.initialZoom || zoomY) * ratio),
+        ),
+      )
+      setZoomY(newZoom)
+
+      const midX = (t1.clientX + t2.clientX) / 2
+      const midY = (t1.clientY + t2.clientY) / 2
+      const deltaX = midX - touchPanRef.current.startX
+      const deltaY = midY - touchPanRef.current.startY
+      container.scrollLeft = touchPanRef.current.startScrollLeft - deltaX
+      container.scrollTop = touchPanRef.current.startScrollTop - deltaY
+      if (pianoScrollRef.current) {
+        pianoScrollRef.current.scrollLeft = container.scrollLeft
+      }
+      touchPanRef.current.isPanning = true
+      justFinishedDragRef.current = true
+    }
+  }
+
+  const handleGridTouchEnd = () => {
+    if (touchPanRef.current?.isPanning) {
+      justFinishedDragRef.current = true
+      setTimeout(() => {
+        justFinishedDragRef.current = false
+      }, 250)
+    }
+    touchPanRef.current = null
+  }
+
+  const handlePianoTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    const container = scrollContainerRef.current
+    if (!container || e.touches.length !== 1) return
+    const touch = e.touches[0]
+    pianoTouchRef.current = {
+      startX: touch.clientX,
+      startY: touch.clientY,
+      startScrollLeft: container.scrollLeft,
+      startScrollTop: container.scrollTop,
+      isPanning: false,
+    }
+  }
+
+  const handlePianoTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!pianoTouchRef.current) return
+    const container = scrollContainerRef.current
+    if (!container || e.touches.length !== 1) return
+    const touch = e.touches[0]
+    const deltaX = touch.clientX - pianoTouchRef.current.startX
+    const deltaY = touch.clientY - pianoTouchRef.current.startY
+
+    if (!pianoTouchRef.current.isPanning && Math.hypot(deltaX, deltaY) > 5) {
+      pianoTouchRef.current.isPanning = true
+    }
+
+    if (pianoTouchRef.current.isPanning) {
+      container.scrollLeft = pianoTouchRef.current.startScrollLeft - deltaX
+      container.scrollTop = pianoTouchRef.current.startScrollTop - deltaY
+      if (pianoScrollRef.current) {
+        pianoScrollRef.current.scrollLeft = container.scrollLeft
+      }
+    }
+  }
+
+  const handlePianoTouchEnd = () => {
+    pianoTouchRef.current = null
+  }
+
   // One-click helper to center active notes in the viewport
   const centerActiveNotes = useCallback(() => {
     const el = scrollContainerRef.current
@@ -1149,6 +1297,36 @@ export default function Studio() {
     window.addEventListener('mouseup', handleMouseUp)
   }
 
+  const handlePlayheadTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return
+    e.stopPropagation()
+    isDraggingPlayheadRef.current = true
+    hasManuallyMovedPlayheadRef.current = true
+
+    const startTouchY = e.touches[0].clientY
+    const initialTime = playbackTimeRef.current
+    const factor = (bpm / 60) * 4 * zoomY
+
+    const handleTouchMove = (moveEv: TouchEvent) => {
+      if (!isDraggingPlayheadRef.current || moveEv.touches.length === 0) return
+      const deltaY = moveEv.touches[0].clientY - startTouchY
+      const deltaTime = -deltaY / factor
+      const targetTime = initialTime + deltaTime
+      seekTo(targetTime)
+    }
+
+    const handleTouchEnd = () => {
+      isDraggingPlayheadRef.current = false
+      window.removeEventListener('touchmove', handleTouchMove)
+      window.removeEventListener('touchend', handleTouchEnd)
+      window.removeEventListener('touchcancel', handleTouchEnd)
+    }
+
+    window.addEventListener('touchmove', handleTouchMove, { passive: true })
+    window.addEventListener('touchend', handleTouchEnd)
+    window.addEventListener('touchcancel', handleTouchEnd)
+  }
+
   useEffect(() => {
     return () => {
       if (playbackIntervalRef.current) {
@@ -1403,19 +1581,19 @@ export default function Studio() {
     window.addEventListener('mouseup', handleNoteMouseUp)
   }
 
-  const handleNoteMouseMove = (e: MouseEvent) => {
+  const processNoteDrag = (clientX: number, clientY: number) => {
     if (!dragRef.current) return
     const { noteIndex, startX, startY, startTime, startMidi, resizeMode, startDuration } =
       dragRef.current
 
-    const deltaX = e.clientX - startX
-    const deltaY = e.clientY - startY
+    const deltaX = clientX - startX
+    const deltaY = clientY - startY
 
     if (Math.hypot(deltaX, deltaY) > 3) {
       justFinishedDragRef.current = true
     }
 
-    // Grid coordinates: Dragging mouse UPWARDS (deltaY < 0) corresponds to moving toward future time (+deltaTime)
+    // Grid coordinates: Dragging mouse/touch UPWARDS (deltaY < 0) corresponds to moving toward future time (+deltaTime)
     const deltaSubdivisions = Math.round(deltaY / zoomY)
     const deltaTime = -deltaSubdivisions * (60 / bpm / 4)
 
@@ -1472,6 +1650,49 @@ export default function Studio() {
 
     updatedNotes[noteIndex] = note
     setNotes(updatedNotes)
+  }
+
+  const handleNoteMouseMove = (e: MouseEvent) => {
+    processNoteDrag(e.clientX, e.clientY)
+  }
+
+  const handleNoteTouchStart = (
+    e: React.TouchEvent,
+    index: number,
+    resizeMode: 'top' | 'bottom' | 'move' = 'move',
+  ) => {
+    if (e.touches.length !== 1) return
+    e.stopPropagation()
+    justFinishedDragRef.current = false
+    const touch = e.touches[0]
+    const note = notes[index]
+    dragRef.current = {
+      noteIndex: index,
+      startX: touch.clientX,
+      startY: touch.clientY,
+      startTime: note.time,
+      startMidi: note.midiNote,
+      resizeMode,
+      startDuration: note.duration,
+    }
+    setSelectedNoteIndex(index)
+
+    const handleTouchMove = (moveEv: TouchEvent) => {
+      if (!dragRef.current || moveEv.touches.length === 0) return
+      const t = moveEv.touches[0]
+      processNoteDrag(t.clientX, t.clientY)
+    }
+
+    const handleTouchEnd = () => {
+      handleNoteMouseUp()
+      window.removeEventListener('touchmove', handleTouchMove)
+      window.removeEventListener('touchend', handleTouchEnd)
+      window.removeEventListener('touchcancel', handleTouchEnd)
+    }
+
+    window.addEventListener('touchmove', handleTouchMove, { passive: true })
+    window.addEventListener('touchend', handleTouchEnd)
+    window.addEventListener('touchcancel', handleTouchEnd)
   }
 
   const handleNoteMouseUp = () => {
@@ -2369,6 +2590,8 @@ export default function Studio() {
         {/* Right panel — timeline + grid + piano */}
         <div
           ref={containerRef}
+          data-no-touchpad-nav="true"
+          className="studio-viewport"
           style={{ position: 'relative', flex: 1, overflow: 'hidden', background: '#1a1a1a' }}
         >
           {/* Timeline bar — pinned to top */}
@@ -2451,6 +2674,7 @@ export default function Studio() {
             {/* Interactive Playhead line & time handle */}
             <div
               onMouseDown={handlePlayheadMouseDown}
+              onTouchStart={handlePlayheadTouchStart}
               onClick={(e) => e.stopPropagation()}
               title="Click or drag to seek time"
               className="group pointer-events-auto absolute right-0 left-0 z-[60] flex h-6 cursor-ns-resize items-center select-none"
@@ -2464,10 +2688,14 @@ export default function Studio() {
 
             {/* Scrollable note grid */}
             <div
-              style={{ width: '100%', height: '100%', overflow: 'auto' }}
+              style={{ width: '100%', height: '100%', overflow: 'auto', touchAction: 'none' }}
               ref={scrollContainerRef}
               onWheel={handleWheel}
               onScroll={handleGridScroll}
+              onTouchStart={handleGridTouchStart}
+              onTouchMove={handleGridTouchMove}
+              onTouchEnd={handleGridTouchEnd}
+              onTouchCancel={handleGridTouchEnd}
             >
               {/* Grid canvas with alternating black/white key vertical lanes */}
               <div
@@ -2539,6 +2767,7 @@ export default function Studio() {
                     <div
                       key={index}
                       onMouseDown={(e) => handleNoteMouseDown(e, index, 'move')}
+                      onTouchStart={(e) => handleNoteTouchStart(e, index, 'move')}
                       onClick={(e) => handleNoteClick(e, index)}
                       onDoubleClick={(e) => handleNoteDoubleClick(e, index)}
                       onMouseEnter={() => setHoveredNoteIndex(index)}
@@ -2587,6 +2816,7 @@ export default function Studio() {
                       {/* Top Duration Resize Handle */}
                       <div
                         onMouseDown={(e) => handleNoteMouseDown(e, index, 'top')}
+                        onTouchStart={(e) => handleNoteTouchStart(e, index, 'top')}
                         title="Drag top edge to adjust duration"
                         className="group/top absolute top-0 left-0 z-20 flex h-3.5 w-full cursor-ns-resize items-center justify-center hover:bg-white/30"
                       >
@@ -2596,6 +2826,7 @@ export default function Studio() {
                       {/* Bottom Duration Resize Handle */}
                       <div
                         onMouseDown={(e) => handleNoteMouseDown(e, index, 'bottom')}
+                        onTouchStart={(e) => handleNoteTouchStart(e, index, 'bottom')}
                         title="Drag bottom edge to adjust duration"
                         className="group/bot absolute bottom-0 left-0 z-20 flex h-3.5 w-full cursor-ns-resize items-center justify-center hover:bg-white/30"
                       >
@@ -2670,10 +2901,14 @@ export default function Studio() {
 
           {/* Piano keys — pinned to bottom, matching Play Mode structure */}
           <div
-            style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: KEY_TOP_HEIGHT }}
+            style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: KEY_TOP_HEIGHT, touchAction: 'none' }}
             className="overflow-hidden border-t border-[#353534] bg-[#1a1a1e]"
             ref={pianoScrollRef}
             onWheel={handleWheel}
+            onTouchStart={handlePianoTouchStart}
+            onTouchMove={handlePianoTouchMove}
+            onTouchEnd={handlePianoTouchEnd}
+            onTouchCancel={handlePianoTouchEnd}
           >
             <div
               className="relative"

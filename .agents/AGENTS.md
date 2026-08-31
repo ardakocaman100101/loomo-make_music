@@ -38,6 +38,17 @@ When interacting with Notion for task management, bug tracking, roadmaps, or fea
 
 ---
 
+## GitHub Repository & MCP Mapping
+
+* **Repository:** `https://github.com/ardakocaman100101/loomo-app`
+* **Owner:** `ardakocaman100101`
+* **Repo Name:** `loomo-app`
+* **GitHub MCP Server (`github`):**
+  * Available tools: `create_pull_request`, `list_pull_requests`, `get_pull_request`, `list_commits`, `get_issue`, `search_code`, `push_files`, etc.
+  * **Workflow:** Use local Git CLI for standard staging/committing/pushing. Use `github` MCP tools for PR creation, review management, remote branch comparisons, and issue synchronization.
+
+---
+
 ## Value & Severity Effort Scaling Rules for All Agents
 
 All agents MUST adapt their thinking depth, token expenditure, and execution effort based on the ticket's **Value** property (for Tasks/Features) or **Severity** property (for Bugs):
@@ -78,6 +89,10 @@ All agents MUST adapt their thinking depth, token expenditure, and execution eff
 ## Universal Status Transition & Lifecycle Rules
 
 1. **PM Agent:** Sets/maintains tickets in **`TODO`** (Features) or **`New`** (Bugs). Must NOT transition tickets to `Implementation`, `Test`, or `Done`.
-2. **Developer Agent:** Transitions tickets from `TODO` / `New` to **`Implementation`** (or `In progress`). After writing code, running builds, and adding implementation notes, the ticket **MUST REMAIN in `Implementation` / `In progress`**. The Developer Agent **MUST NEVER** set ticket status to **`Done`**, **`Fixed`**, or **`Test`**.
-3. **Tester Agent:** Transitions tickets from `Implementation` to **`Test`** when starting QA. If all tests pass, leaves in `Test` (or user marks `Done` / `Fixed`). If any test fails, transitions status back to `Implementation`.
-4. **Done / Fixed Status:** `Done` and `Fixed` are reserved exclusively for post-QA signoff or the Boss (User). Developer agents never complete tickets as `Done` or `Fixed`.
+2. **Developer Agent:** Transitions tickets from `TODO` / `New` to **`Implementation`** (or `In progress`). After writing code, running builds, and adding implementation notes, the ticket **MUST REMAIN in `Implementation` / `In progress`** until QA verification or Boss approval.
+3. **Tester Agent:** Transitions tickets from `Implementation` to **`Test`** when starting QA. If all tests pass, leaves in `Test` and requests final approval from the Boss. If any test fails, transitions status back to `Implementation`.
+4. **Approval, Auto-Commit, Push & Done Protocol:**
+   - When the Boss (User) approves the changes (e.g., "approved", "looks good", "ship it", "done", "commit") or notifies that the ticket is marked Done on Notion:
+     1. **Git Commit & Push:** Automatically stage all relevant changes (`git add .`), create a clear, descriptive commit message (following conventional commit conventions: `feat(...)`, `fix(...)`, etc.), and push to remote (`git push`).
+     2. **Notion Status Update:** Transition the Notion ticket status to **`Done`** (for Features/Tasks) or **`Fixed`** (for Bugs) via `notion-update-page` if not already updated.
+     3. **Concise Confirmation:** Briefly confirm to the Boss that changes have been committed, pushed, and the ticket is marked Done.

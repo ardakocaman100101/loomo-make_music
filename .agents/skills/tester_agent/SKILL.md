@@ -59,4 +59,9 @@ Update or overwrite the **QA Test Results Table** directly in place in Notion. *
   * **Transition Back:** Shift status back to **Implementation** via `notion-update-page`.
   * Overwrite/update the QA table with exact failed items and reproduction steps for the Developer Agent.
 * **If ALL tests PASS:**
-  * **Keep in Test:** Leave ticket status in **Test**. Update the QA table to show all passed. User performs final test and moves to **Done**.
+  * **Keep in Test:** Leave ticket status in **Test**. Update the QA table to show all passed. Request final sign-off from the Boss.
+* **Boss Approval & Auto-Commit/Push Protocol:**
+  * When the Boss approves the verified ticket (e.g. "approved", "looks good", "done", "commit and push") or sets the ticket to Done in Notion:
+    1. Run `git add .`, `git commit -m "<type>(<scope>): <summary>"`, and `git push`.
+    2. Transition the Notion ticket to **`Done`** (or **`Fixed`**) via `notion-update-page` if not already updated.
+    3. Output a concise confirmation to the Boss.

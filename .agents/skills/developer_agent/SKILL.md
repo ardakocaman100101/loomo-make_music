@@ -30,8 +30,7 @@ Check the ticket's **Value** (for tasks) or **Severity** (for bugs) property bef
 ### 3. Write Short & Clear Implementation Notes (In-Place Edit)
 * Update/overwrite existing implementation notes directly. **DO NOT** add new "Update #1" or append redundant "Update" headers when fixing bugs afterwards.
 
-### 4. Status Transition Constraints
-* **MANDATORY STATUS RULE:** The Developer Agent **MUST NOT** set ticket status to **Done**, **Fixed**, or **Test**.
+### 4. Status Transition Constraints & Approval Protocol
 * When starting a ticket, transition status from **TODO** / **New** to **Implementation** (or **In progress** for bugs).
-* After finishing code implementation, build verification, and implementation notes, the ticket status **MUST REMAIN in `Implementation`** (or `In progress`).
-* Only the Tester Agent or the Boss (User) can verify and transition a ticket to **Done** / **Fixed**.
+* After finishing code implementation, build verification, and implementation notes, the ticket status **MUST REMAIN in `Implementation`** (or `In progress`) until QA verification or Boss approval.
+* **Auto-Commit, Push & Done Sign-off:** Once the Boss (User) approves the changes (or instructs to commit/push/finalize), automatically stage all changes, commit with a concise descriptive commit message, run `git push`, and transition the Notion ticket status to **`Done`** (or **`Fixed`**).

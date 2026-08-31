@@ -233,6 +233,17 @@ export function useTouchpadNavigation({
 
     // Touch screen swipe handling
     const handleTouchStart = (e: TouchEvent) => {
+      // Ignore on studio page or studio scrollable containers to preserve 2D piano roll touch navigation
+      if (
+        typeof window !== 'undefined' &&
+        (window.location.pathname.startsWith('/studio') ||
+          (e.target as HTMLElement | null)?.closest?.('[data-no-touchpad-nav]') ||
+          (e.target as HTMLElement | null)?.closest?.('.studio-viewport'))
+      ) {
+        touchStartPos.current = null
+        return
+      }
+
       if (e.touches.length === 1) {
         touchStartPos.current = {
           x: e.touches[0].clientX,
@@ -247,6 +258,15 @@ export function useTouchpadNavigation({
 
     const handleTouchEnd = (e: TouchEvent) => {
       if (!touchStartPos.current) return
+      if (
+        typeof window !== 'undefined' &&
+        (window.location.pathname.startsWith('/studio') ||
+          (e.target as HTMLElement | null)?.closest?.('[data-no-touchpad-nav]') ||
+          (e.target as HTMLElement | null)?.closest?.('.studio-viewport'))
+      ) {
+        touchStartPos.current = null
+        return
+      }
       const start = touchStartPos.current
       touchStartPos.current = null
 
